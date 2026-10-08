@@ -330,9 +330,18 @@ namespace Abismo.EditorTools
         // Render
         // ------------------------------------------------------------------
 
-        public PixelCanvas Render(out PixelCanvas normalMap) => Render(LightRig.Default, out normalMap);
+        public PixelCanvas Render(out PixelCanvas normalMap) => Render(LightRig.Default, out normalMap, out _);
 
-        public PixelCanvas Render(LightRig light, out PixelCanvas normalMap)
+        public PixelCanvas Render(LightRig light, out PixelCanvas normalMap) => Render(light, out normalMap, out _);
+
+        /// <summary>
+        /// Igual que <see cref="Render(out PixelCanvas)"/>, y además devuelve <paramref name="emission"/>: solo los píxeles
+        /// de materiales emisivos (ojos, brasas, runas). El juego los dibuja encima sin iluminar para que brillen
+        /// aunque la escena esté a oscuras (y el bloom los realce).
+        /// </summary>
+        public PixelCanvas Render(out PixelCanvas normalMap, out PixelCanvas emission) => Render(LightRig.Default, out normalMap, out emission);
+
+        public PixelCanvas Render(LightRig light, out PixelCanvas normalMap, out PixelCanvas emission)
         {
             int n = Width * Height;
             var top = new Shape[n];
@@ -424,11 +433,13 @@ namespace Abismo.EditorTools
             // 4) Color + normal map.
             var color = new PixelCanvas(Width, Height);
             normalMap = new PixelCanvas(Width, Height);
+            emission = new PixelCanvas(Width, Height);
             for (int i = 0; i < n; i++)
             {
                 var s = top[i];
                 if (s == null) continue;
                 color.Pixels[i] = s.Material.Lit(shaded[i]);
+                if (s.Material.Emissive) emission.Pixels[i] = color.Pixels[i];
                 var nn = s.Material.Emissive ? N3.Front : normals[i];
                 normalMap.Pixels[i] = EncodeNormal(nn);
             }
