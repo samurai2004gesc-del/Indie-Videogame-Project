@@ -1,33 +1,42 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.Tilemaps;
 
 namespace Abismo.EditorTools
 {
     /// <summary>
-    /// Menú "Abismo" de la barra superior de Unity. Con un clic crea:
-    ///   1. Las capas (Layers) que usa el juego.
-    ///   2. Los sprites provisionales (PNG) en Assets/_Abismo/Art/Generated.
-    ///   3. Materiales, tiles y prefabs (jugador, enemigos, jefe, altar...).
-    ///   4. La escena Assets/_Abismo/Scenes/Nivel_01 a partir del mapa de texto
+    /// Menú "Abismo" de la barra superior de Unity. Con un clic:
+    ///   1. Configura el proyecto para URP 2D (luces 2D, normal maps, bloom y post-procesado) y la cámara pixel-perfect.
+    ///   2. Pinta TODO el arte por código (personajes animados, terreno, decorado, fondos, interfaz) y lo importa.
+    ///   3. Crea los prefabs (jugador, enemigos, jefe, proyectiles, altar...) con sus animaciones.
+    ///   4. Monta la escena Assets/_Abismo/Scenes/Nivel_01 a partir del mapa de texto
     ///      Assets/_Abismo/Levels/nivel_01.txt (¡edítalo para diseñar tu propio nivel!).
     /// </summary>
     public static class AbismoBuilder
     {
         const string Root = "Assets/_Abismo";
-        const string ArtFolder = Root + "/Art/Generated";
-        const string TileFolder = Root + "/Art/Tiles";
         const string MaterialFolder = Root + "/Materials";
         const string PrefabFolder = Root + "/Prefabs";
         const string SceneFolder = Root + "/Scenes";
+        const string FontFolder = Root + "/Fonts";
         const string LevelFile = Root + "/Levels/nivel_01.txt";
         const string ScenePath = SceneFolder + "/Nivel_01.unity";
+        const string PrefabLabel = "AbismoV2";
 
-        const float CameraSize = 7f;
-        const float MaxHalfWidth = 16f; // cubre pantallas de hasta 21:9
+        // Resolución de referencia: 640×360 píxeles de arte a 32 px por unidad (20 × 11,25 casillas).
+        const int RefWidth = 640, RefHeight = 360;
+        const float HalfViewW = RefWidth / 2f / ArtBaker.PixelsPerUnit, HalfViewH = RefHeight / 2f / ArtBaker.PixelsPerUnit;
+
+        // Orden de dibujado (todo en la capa de ordenación "Default").
+        const int OrderBackWall = -15, OrderPropsBack = -8, OrderPropsHanging = -7, OrderShafts = -5, OrderTerrain = 0,
+                  OrderPlatforms = 1, OrderHazards = 2, OrderInteractables = 3, OrderBoss = 4, OrderEnemies = 5, OrderPlayer = 10,
+                  OrderPickups = 15, OrderWater = 20, OrderForeground = 60;
 
         [MenuItem("Abismo/Construir demo jugable", false, 0)]
         public static void BuildDemo() => Build(false, false);
@@ -41,20 +50,23 @@ namespace Abismo.EditorTools
             if (ok) Build(false, true);
         }
 
-        [MenuItem("Abismo/Restablecer sprites provisionales y construir", false, 21)]
-        public static void ResetArtAndBuild()
-        {
-            bool ok = EditorUtility.DisplayDialog("Abismo",
-                "Esto SOBRESCRIBE los PNG de " + ArtFolder + " con el arte provisional.\n" +
-                "Si has pintado tu propio arte encima, se perderá.", "Sobrescribir", "Cancelar");
-            if (ok) Build(true, false);
-        }
+        [MenuItem("Abismo/Volver a importar todo el arte y construir", false, 21)]
+        public static void ReimportArtAndBuild() => Build(true, false);
 
         // ------------------------------------------------------------------
         // Proceso completo
         // ------------------------------------------------------------------
 
-        static void Build(bool overwriteArt, bool overwritePrefabs)
+        sealed class Context
+        {
+            public LevelData Level;
+            public Materials Mat;
+            public Art Art;
+            public Prefabs Prefabs;
+            public int GroundLayer, PlayerLayer, EnemyLayer;
+        }
+
+        static void Build(bool forceArt, bool overwritePrefabs)
         {
             if (EditorApplication.isPlaying)
             {
@@ -63,39 +75,49 @@ namespace Abismo.EditorTools
             }
             if (File.Exists(ScenePath) && !EditorUtility.DisplayDialog("Abismo",
                     "Se volverá a crear la escena Nivel_01 a partir de " + LevelFile + ".\n" +
-                    "Los cambios hechos A MANO en la escena se perderán (tus prefabs, scripts y PNG no se tocan).\n\n¿Continuar?",
+                    "Los cambios hechos A MANO en la escena se perderán (tus scripts y el mapa no se tocan).\n\n¿Continuar?",
                     "Construir", "Cancelar"))
             {
                 return;
             }
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
 
+            var watch = System.Diagnostics.Stopwatch.StartNew();
             try
             {
-                Progress("Creando capas", 0.02f);
-                int groundLayer = EnsureLayer(GameLayers.Ground);
-                int playerLayer = EnsureLayer(GameLayers.Player);
-                int enemyLayer = EnsureLayer(GameLayers.Enemy);
-                Physics2D.IgnoreLayerCollision(playerLayer, enemyLayer, true);
-                Physics2D.IgnoreLayerCollision(enemyLayer, enemyLayer, true);
+                var ctx = new Context();
+                Progress("Leyendo el mapa", 0.01f);
+                ctx.Level = LevelData.Load(LevelFile);
+
+                Progress("Capas y física", 0.02f);
+                ctx.GroundLayer = EnsureLayer(GameLayers.Ground);
+                ctx.PlayerLayer = EnsureLayer(GameLayers.Player);
+                ctx.EnemyLayer = EnsureLayer(GameLayers.Enemy);
+                Physics2D.IgnoreLayerCollision(ctx.PlayerLayer, ctx.EnemyLayer, true);
+                Physics2D.IgnoreLayerCollision(ctx.EnemyLayer, ctx.EnemyLayer, true);
                 EditorSettings.defaultBehaviorMode = EditorBehaviorMode.Mode2D;
+                foreach (var folder in new[] { MaterialFolder, PrefabFolder, SceneFolder, ArtBaker.ArtRoot, ArtBaker.AnimRoot }) EnsureFolder(folder);
 
-                foreach (var folder in new[] { ArtFolder, TileFolder, MaterialFolder, PrefabFolder, SceneFolder }) EnsureFolder(folder);
+                Progress("Configurando URP 2D", 0.04f);
+                PipelineSetup.EnsurePipeline();
+                PipelineSetup.ConfigurePlayer();
+                ctx.Mat = CreateMaterials();
 
-                var art = GenerateArt(overwriteArt);
-                Progress("Creando materiales y tiles", 0.45f);
-                var materials = CreateMaterials();
-                var tiles = CreateTiles(art);
-                Progress("Creando prefabs", 0.55f);
-                var prefabs = CreatePrefabs(art, materials, playerLayer, enemyLayer, overwritePrefabs);
-                Progress("Construyendo el nivel", 0.75f);
-                BuildScene(art, materials, tiles, prefabs, groundLayer);
+                ctx.Art = BakeArt(ctx.Level, forceArt);
+
+                Progress("Creando prefabs", 0.7f);
+                ctx.Prefabs = CreatePrefabs(ctx, overwritePrefabs);
+
+                Progress("Construyendo el nivel", 0.8f);
+                BuildScene(ctx);
                 AssetDatabase.SaveAssets();
-
                 EditorUtility.ClearProgressBar();
+
+                string warning = PipelineSetup.InputHandlingWarning();
                 EditorUtility.DisplayDialog("Abismo",
-                    "¡Listo! Se ha creado y abierto la escena Nivel_01.\n\nPulsa el botón ▶ (Play) para jugar.\n" +
-                    "Controles: A/D mover · Espacio saltar · J atacar · L esquivar · I parar · F curarse · U conjuro · E interactuar · Esc pausa",
+                    $"¡Listo en {watch.Elapsed.TotalSeconds:0} s! Se ha creado y abierto la escena Nivel_01.\n\nPulsa ▶ (Play) para jugar.\n" +
+                    "Controles: A/D mover · Espacio saltar · J atacar · L esquivar · I parar · F curarse · U conjuro · E interactuar · Esc pausa" +
+                    (warning != null ? "\n\nAviso: " + warning : ""),
                     "¡A jugar!");
             }
             catch (System.Exception e)
@@ -112,7 +134,7 @@ namespace Abismo.EditorTools
 
         static void Progress(string message, float value) => EditorUtility.DisplayProgressBar("Abismo", message, value);
 
-        static void EnsureFolder(string path)
+        public static void EnsureFolder(string path)
         {
             if (AssetDatabase.IsValidFolder(path)) return;
             string parent = Path.GetDirectoryName(path).Replace('\\', '/');
@@ -143,107 +165,35 @@ namespace Abismo.EditorTools
         }
 
         // ------------------------------------------------------------------
-        // Arte
+        // Materiales
         // ------------------------------------------------------------------
 
-        class Art
+        sealed class Materials
         {
-            readonly Dictionary<string, Sprite> sprites = new Dictionary<string, Sprite>();
+            public Material Lit, Unlit, Additive, Silhouette, Emissive;
+        }
 
-            public void Add(string name, Sprite sprite) => sprites[name] = sprite;
-
-            public Sprite this[string name]
+        static Materials CreateMaterials()
+        {
+            var m = new Materials
             {
-                get
-                {
-                    if (sprites.TryGetValue(name, out var sprite) && sprite != null) return sprite;
-                    throw new System.Exception("No se encontró el sprite '" + name + "' en " + ArtFolder + ".");
-                }
-            }
+                Lit = PipelineSetup.SpriteLit,
+                Unlit = PipelineSetup.SpriteUnlit,
+                Additive = MaterialAsset("SpriteAdditive", "Abismo/SpriteAdditive"),
+                Silhouette = MaterialAsset("SpriteSilhouette", "Abismo/SpriteSilhouette"),
+                Emissive = MaterialAsset("SpriteEmissive", "Abismo/SpriteEmissive"),
+            };
+            m.Emissive.SetFloat("_Intensity", 1.6f);
+            if (m.Lit == null || m.Unlit == null)
+                throw new System.Exception("No se encontraron los materiales de sprites de URP. ¿Está instalado el paquete Universal RP (Window > Package Manager)?");
+            return m;
         }
-
-        static Art GenerateArt(bool overwrite)
-        {
-            var specs = AbismoArt.All();
-            for (int i = 0; i < specs.Count; i++)
-            {
-                var spec = specs[i];
-                string path = ArtFolder + "/" + spec.Name + ".png";
-                if (!overwrite && File.Exists(path)) continue;
-                Progress("Dibujando " + spec.Name, 0.05f + 0.3f * i / specs.Count);
-                File.WriteAllBytes(path, EncodePng(spec.Draw()));
-            }
-            AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-
-            var art = new Art();
-            for (int i = 0; i < specs.Count; i++)
-            {
-                var spec = specs[i];
-                string path = ArtFolder + "/" + spec.Name + ".png";
-                Progress("Importando " + spec.Name, 0.35f + 0.1f * i / specs.Count);
-                ConfigureImporter(path, spec);
-                art.Add(spec.Name, AssetDatabase.LoadAssetAtPath<Sprite>(path));
-            }
-            return art;
-        }
-
-        static byte[] EncodePng(PixelCanvas canvas)
-        {
-            var texture = new Texture2D(canvas.Width, canvas.Height, TextureFormat.RGBA32, false);
-            texture.SetPixels32(canvas.Pixels);
-            texture.Apply();
-            byte[] png = texture.EncodeToPNG();
-            Object.DestroyImmediate(texture);
-            return png;
-        }
-
-        static void ConfigureImporter(string path, SpriteSpec spec)
-        {
-            var importer = AssetImporter.GetAtPath(path) as TextureImporter;
-            if (importer == null) return;
-            importer.textureType = TextureImporterType.Sprite;
-            importer.spriteImportMode = SpriteImportMode.Single;
-
-            var settings = new TextureImporterSettings();
-            importer.ReadTextureSettings(settings);
-            settings.spriteMeshType = SpriteMeshType.FullRect;
-            settings.spriteAlignment = (int)spec.Alignment;
-            settings.spritePivot = spec.Pivot;
-            settings.spritePixelsPerUnit = spec.PixelsPerUnit;
-            settings.filterMode = spec.Smooth ? FilterMode.Bilinear : FilterMode.Point;
-            settings.wrapMode = TextureWrapMode.Clamp;
-            settings.mipmapEnabled = false;
-            settings.alphaIsTransparency = true;
-            importer.SetTextureSettings(settings);
-            importer.textureCompression = TextureImporterCompression.Uncompressed;
-            importer.SaveAndReimport();
-        }
-
-        // ------------------------------------------------------------------
-        // Materiales y tiles
-        // ------------------------------------------------------------------
-
-        class Materials
-        {
-            public Material Flash;
-            public Material Additive;
-        }
-
-        static Materials CreateMaterials() => new Materials
-        {
-            Flash = MaterialAsset("SpriteFlash", "Abismo/SpriteFlash"),
-            Additive = MaterialAsset("SpriteAdditive", "Abismo/SpriteAdditive"),
-        };
 
         static Material MaterialAsset(string name, string shaderName)
         {
             string path = MaterialFolder + "/" + name + ".mat";
             var shader = Shader.Find(shaderName);
-            if (shader == null)
-            {
-                Debug.LogWarning("[Abismo] No se encontró el shader " + shaderName + "; se usa Sprites/Default.");
-                shader = Shader.Find("Sprites/Default");
-            }
+            if (shader == null) throw new System.Exception("No se encontró el shader " + shaderName + " (Assets/_Abismo/Shaders).");
             var material = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (material == null)
             {
@@ -253,50 +203,159 @@ namespace Abismo.EditorTools
             else
             {
                 material.shader = shader;
-                EditorUtility.SetDirty(material);
             }
+            EditorUtility.SetDirty(material);
             return material;
         }
 
-        class Tiles
-        {
-            public TileBase Top, InnerA, InnerB, Back, Platform;
-        }
+        // ------------------------------------------------------------------
+        // Arte
+        // ------------------------------------------------------------------
 
-        static Tiles CreateTiles(Art art) => new Tiles
+        sealed class Art
         {
-            Top = TileAsset("SueloSuperior", art[AbismoArt.GroundTop], Tile.ColliderType.Grid),
-            InnerA = TileAsset("SueloInteriorA", art[AbismoArt.GroundA], Tile.ColliderType.Grid),
-            InnerB = TileAsset("SueloInteriorB", art[AbismoArt.GroundB], Tile.ColliderType.Grid),
-            Back = TileAsset("ParedDeFondo", art[AbismoArt.BackWall], Tile.ColliderType.None),
-            Platform = TileAsset("Plataforma", art[AbismoArt.Platform], Tile.ColliderType.Grid),
-        };
+            public readonly Dictionary<string, BakedCharacter> Characters = new Dictionary<string, BakedCharacter>();
+            public readonly Dictionary<string, Sprite> Sprites = new Dictionary<string, Sprite>();
+            public readonly Dictionary<string, Sprite> Glows = new Dictionary<string, Sprite>();
+            public readonly Dictionary<string, PropSprite> PropInfo = new Dictionary<string, PropSprite>();
+            public readonly Dictionary<string, Sprite[]> Animations = new Dictionary<string, Sprite[]>();
+            public readonly Dictionary<string, float> AnimationFps = new Dictionary<string, float>();
+            public readonly List<(TerrainChunk chunk, Sprite sprite, bool back)> Terrain = new List<(TerrainChunk, Sprite, bool)>();
+            public readonly Dictionary<Zone, List<(BackgroundLayer layer, Sprite sprite)>> Backgrounds = new Dictionary<Zone, List<(BackgroundLayer, Sprite)>>();
+            public Font TitleFont, TextFont;
 
-        static Tile TileAsset(string name, Sprite sprite, Tile.ColliderType collider)
-        {
-            string path = TileFolder + "/" + name + ".asset";
-            var tile = AssetDatabase.LoadAssetAtPath<Tile>(path);
-            if (tile == null)
+            public Sprite this[string name]
             {
-                tile = ScriptableObject.CreateInstance<Tile>();
-                AssetDatabase.CreateAsset(tile, path);
+                get
+                {
+                    if (Sprites.TryGetValue(name, out var sprite) && sprite != null) return sprite;
+                    throw new System.Exception("No se encontró el sprite '" + name + "'.");
+                }
             }
-            tile.sprite = sprite;
-            tile.colliderType = collider;
-            tile.color = Color.white;
-            EditorUtility.SetDirty(tile);
-            return tile;
+
+            public Sprite Glow(string name) => Glows.TryGetValue(name, out var g) ? g : null;
         }
 
-        // ------------------------------------------------------------------
-        // Prefabs
-        // ------------------------------------------------------------------
-
-        class Prefabs
+        static Art BakeArt(LevelData level, bool force)
         {
-            public GameObject Player, DeepOne, Cultist, Eye, Boss;
-            public GameObject Orb, Spell, Coin, Fragment, Tentacle, Altar, Inscription;
+            var art = new Art();
+            var baker = new ArtBaker(Progress);
+
+            // Personajes.
+            var characters = new CharacterArt[] { new AhogadoArt(), new ProfundoArt(), new SectarioArt(), new OjoArt(), new ArcipresteArt() };
+            var pending = new List<ArtBaker.PendingCharacter>();
+            for (int i = 0; i < characters.Length; i++)
+            {
+                Progress("Animando a " + characters[i].Id, 0.06f + 0.12f * i / characters.Length);
+                pending.Add(baker.AddCharacter(characters[i]));
+            }
+
+            // Decorado y objetos.
+            Progress("Pintando el decorado", 0.18f);
+            var propPaths = new Dictionary<string, (string color, string glow)>();
+            foreach (var prop in PropArt.Statics().Concat(PropArt.Gameplay()))
+            {
+                string path = baker.AddSprite("Decorado", prop.Name, prop.Color, prop.Normal, prop.Pivot01, prop.Border);
+                string glow = prop.Emission != null ? baker.AddSprite("Decorado", prop.Name + "_brillo", prop.Emission, null, prop.Pivot01) : null;
+                propPaths[prop.Name] = (path, glow);
+                art.PropInfo[prop.Name] = prop;
+            }
+            var animPaths = new Dictionary<string, (string path, List<string> names)>();
+            foreach (var anim in PropArt.Animated())
+            {
+                var names = Enumerable.Range(0, anim.Frames.Count).Select(i => $"{anim.Name}_{i:00}").ToList();
+                animPaths[anim.Name] = (baker.AddSheet("Decorado", anim.Name, anim.Frames, names, anim.Normals, anim.Pivot01), names);
+                art.AnimationFps[anim.Name] = anim.Fps;
+            }
+            var pixel = new PixelCanvas(4, 4);
+            for (int i = 0; i < pixel.Pixels.Length; i++) pixel.Pixels[i] = new Color32(255, 255, 255, 255);
+            string pixelPath = baker.AddSprite("Comun", "pixel", pixel, null, new Vector2(0.5f, 0.5f), default, 4f);
+
+            // Terreno pintado a partir del mapa.
+            Progress("Pintando el terreno", 0.24f);
+            System.Func<int, Zone> zoneAt = level.ZoneAt;
+            var solid = TerrainPainter.PaintSolid((x, y) => level.At(x, y) == '#', level.Width, level.Height, zoneAt);
+            var back = TerrainPainter.PaintBackWall(level.IsBackWall, level.Width, level.Height, zoneAt);
+            var terrainPaths = new List<(TerrainChunk chunk, string path, bool back)>();
+            foreach (var chunk in solid) terrainPaths.Add((chunk, baker.AddSprite("Terreno", $"solido_{chunk.TileX}_{chunk.TileY}", chunk.Color, chunk.Normal, Vector2.zero), false));
+            foreach (var chunk in back) terrainPaths.Add((chunk, baker.AddSprite("Terreno", $"fondo_{chunk.TileX}_{chunk.TileY}", chunk.Color, chunk.Normal, Vector2.zero), true));
+            RemoveStale(ArtBaker.ArtRoot + "/Terreno", terrainPaths.Select(t => t.path));
+
+            // Fondos con paralaje.
+            Progress("Pintando los fondos", 0.28f);
+            var bgPaths = new Dictionary<Zone, List<(BackgroundLayer layer, string path)>>();
+            foreach (Zone zone in System.Enum.GetValues(typeof(Zone)))
+            {
+                bgPaths[zone] = new List<(BackgroundLayer, string)>();
+                foreach (var layer in BackgroundArt.For(zone))
+                    bgPaths[zone].Add((layer, baker.AddSprite("Fondos", $"{zone.ToString().ToLowerInvariant()}_{layer.Name}", layer.Canvas, null, Vector2.zero)));
+            }
+
+            // Interfaz (100 px por unidad = 1 píxel de arte por unidad del Canvas de 640×360).
+            var uiPaths = new Dictionary<string, string>();
+            foreach (var ui in UIArt.All()) uiPaths[ui.Name] = baker.AddSprite("Interfaz", ui.Name, ui.Canvas, null, new Vector2(0.5f, 0.5f), ui.Border, 100f);
+
+            baker.ImportAll(force);
+
+            Progress("Creando animaciones", 0.5f);
+            foreach (var p in pending) art.Characters[p.Art.Id] = ArtBaker.FinishCharacter(p);
+            foreach (var kv in propPaths)
+            {
+                art.Sprites[kv.Key] = ArtBaker.LoadSprite(kv.Value.color);
+                if (kv.Value.glow != null) art.Glows[kv.Key] = ArtBaker.LoadSprite(kv.Value.glow);
+            }
+            foreach (var kv in animPaths)
+            {
+                var sheet = ArtBaker.LoadSheet(kv.Value.path);
+                art.Animations[kv.Key] = kv.Value.names.Select(n => sheet.TryGetValue(n, out var s) ? s : null).Where(s => s != null).ToArray();
+            }
+            art.Sprites["pixel"] = ArtBaker.LoadSprite(pixelPath);
+            foreach (var t in terrainPaths) art.Terrain.Add((t.chunk, ArtBaker.LoadSprite(t.path), t.back));
+            foreach (var kv in bgPaths) art.Backgrounds[kv.Key] = kv.Value.Select(b => (b.layer, ArtBaker.LoadSprite(b.path))).ToList();
+            foreach (var kv in uiPaths) art.Sprites[kv.Key] = ArtBaker.LoadSprite(kv.Value);
+
+            art.TitleFont = ImportFont(FontFolder + "/Jacquard24-Regular.ttf", 24);
+            art.TextFont = ImportFont(FontFolder + "/Jersey10-Regular.ttf", 10);
+            AssetDatabase.SaveAssets();
+            return art;
         }
+
+        /// <summary>Borra trozos de terreno de versiones anteriores del mapa que ya no existen.</summary>
+        static void RemoveStale(string folder, IEnumerable<string> keep)
+        {
+            if (!Directory.Exists(folder)) return;
+            var wanted = new HashSet<string>(keep.SelectMany(p => new[] { p, p.Replace(".png", "_n.png") }));
+            foreach (var file in Directory.GetFiles(folder, "*.png"))
+            {
+                string path = file.Replace('\\', '/');
+                if (!wanted.Contains(path)) AssetDatabase.DeleteAsset(path);
+            }
+        }
+
+        /// <summary>Fuente pixel: se rasteriza sin suavizado a su tamaño de diseño (o múltiplos) para que quede nítida.</summary>
+        static Font ImportFont(string path, int designSize)
+        {
+            var importer = AssetImporter.GetAtPath(path) as TrueTypeFontImporter;
+            if (importer == null)
+            {
+                Debug.LogWarning("[Abismo] No se encontró la fuente " + path + "; se usará la fuente por defecto.");
+                return null;
+            }
+            if (importer.fontSize != designSize || importer.fontRenderingMode != FontRenderingMode.HintedRaster)
+            {
+                importer.fontSize = designSize;
+                importer.fontRenderingMode = FontRenderingMode.HintedRaster;
+                importer.fontTextureCase = FontTextureCase.Dynamic;
+                importer.includeFontData = true;
+                importer.characterPadding = 1;
+                importer.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Font>(path);
+        }
+
+        // ------------------------------------------------------------------
+        // Piezas comunes de los prefabs
+        // ------------------------------------------------------------------
 
         static GameObject Child(string name, GameObject parent, Vector2 localPosition)
         {
@@ -306,36 +365,94 @@ namespace Abismo.EditorTools
             return go;
         }
 
-        static Material DefaultSpriteMaterial => AssetDatabase.GetBuiltinExtraResource<Material>("Sprites-Default.mat");
-
         static SpriteRenderer AddSprite(GameObject go, Sprite sprite, Material material, int order, Color? color = null)
         {
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = sprite;
-            if (material == null) material = DefaultSpriteMaterial;
-            if (material != null) sr.sharedMaterial = material;
+            sr.sharedMaterial = material;
             sr.sortingOrder = order;
             if (color.HasValue) sr.color = color.Value;
             return sr;
         }
 
-        static SpriteRenderer AddGlow(GameObject parent, Art art, Materials materials, Vector2 position, float scale, Color color, int order)
+        static SpriteRenderer AddGlow(GameObject parent, Context ctx, Vector2 position, float scale, Color color, int order)
         {
-            var glow = AddSprite(Child("Brillo", parent, position), art[AbismoArt.Glow], materials.Additive, order, color);
+            var glow = AddSprite(Child("Brillo", parent, position), ctx.Art["brillo"], ctx.Mat.Additive, order, color);
             glow.transform.localScale = new Vector3(scale, scale, 1f);
             return glow;
+        }
+
+        static Light2D AddLight(GameObject parent, Vector2 position, Color color, float intensity, float outerRadius, float falloff = 0.6f,
+                                bool normals = true, float flicker = 0f)
+        {
+            var go = Child("Luz", parent, position);
+            var light = go.AddComponent<Light2D>();
+            light.lightType = Light2D.LightType.Point;
+            light.blendStyleIndex = 0;
+            light.color = color;
+            light.intensity = intensity;
+            light.pointLightInnerRadius = outerRadius * 0.15f;
+            light.pointLightOuterRadius = outerRadius;
+            light.pointLightInnerAngle = 360f;
+            light.pointLightOuterAngle = 360f;
+            light.falloffIntensity = falloff;
+            light.shadowsEnabled = false;
+            light.volumetricEnabled = false;
+            light.targetSortingLayers = SortingLayer.layers.Select(l => l.id).ToArray();
+            if (normals) PipelineSetup.UseNormalMaps(light, 1.6f);
+            if (flicker > 0f) go.AddComponent<LightFlicker>().Configure(flicker, 7f);
+            return light;
+        }
+
+        static void AddFlame(GameObject parent, Context ctx, Vector2 position, bool big, int order)
+        {
+            string name = big ? "llama_grande" : "llama";
+            var flame = AddSprite(Child("Llama", parent, position), ctx.Art.Animations[name][0], ctx.Mat.Emissive, order);
+            flame.gameObject.AddComponent<LoopingSprite>().Configure(ctx.Art.Animations[name], ctx.Art.AnimationFps[name]);
+        }
+
+        /// <summary>
+        /// Cuerpo animado de un personaje: sprite iluminado + Animator, su capa de brillo (ojos, brasas) y la
+        /// silueta para los destellos (golpes, avisos de ataque). Devuelve el objeto "Visual" (se voltea con la escala).
+        /// </summary>
+        static (GameObject visual, SpriteRenderer body, CharacterAnimator anim, FlashEffect flash) Body(GameObject root, Context ctx, BakedCharacter character, int order)
+        {
+            var visual = Child("Visual", root, Vector2.zero);
+            var body = AddSprite(visual, character.FirstFrame, ctx.Mat.Lit, order);
+            var animator = visual.AddComponent<Animator>();
+            animator.runtimeAnimatorController = character.Controller;
+            animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+            var anim = visual.AddComponent<CharacterAnimator>();
+
+            if (character.GlowFrames.Any(g => g != null))
+            {
+                var glowRenderer = AddSprite(Child("Brillo", visual, Vector2.zero), null, ctx.Mat.Emissive, order + 1);
+                var glow = glowRenderer.gameObject.AddComponent<SpriteGlow>();
+                glow.source = body;
+                glow.overlay = glowRenderer;
+                glow.from = character.Frames;
+                glow.to = character.GlowFrames;
+            }
+
+            var overlay = AddSprite(Child("Destello", visual, Vector2.zero), null, ctx.Mat.Silhouette, order + 2);
+            overlay.enabled = false;
+            var flash = root.AddComponent<FlashEffect>();
+            flash.source = body;
+            flash.overlay = overlay;
+            return (visual, body, anim, flash);
         }
 
         static GameObject SavePrefab(GameObject go, string fileName)
         {
             var prefab = PrefabUtility.SaveAsPrefabAsset(go, PrefabFolder + "/" + fileName + ".prefab");
             Object.DestroyImmediate(go);
+            AssetDatabase.SetLabels(prefab, new[] { PrefabLabel });
             return prefab;
         }
 
         /// <summary>
-        /// Si el prefab ya existe se reutiliza tal cual (con los ajustes que le hayas hecho);
-        /// solo se crea si falta o si se pide restablecerlo.
+        /// Si el prefab ya existe (y es de esta versión) se reutiliza tal cual, con los ajustes que le hayas hecho;
+        /// solo se crea si falta, si es de la versión anterior o si se pide restablecerlo.
         /// </summary>
         static GameObject GetOrBuild(string fileName, bool overwrite, System.Func<GameObject> build)
         {
@@ -343,150 +460,59 @@ namespace Abismo.EditorTools
             if (!overwrite)
             {
                 var existing = AssetDatabase.LoadAssetAtPath<GameObject>(path);
-                if (existing != null) return existing;
+                if (existing != null && AssetDatabase.GetLabels(existing).Contains(PrefabLabel)) return existing;
             }
             return build();
         }
 
-        static Prefabs CreatePrefabs(Art art, Materials materials, int playerLayer, int enemyLayer, bool overwrite)
+        // ------------------------------------------------------------------
+        // Prefabs
+        // ------------------------------------------------------------------
+
+        sealed class Prefabs
+        {
+            public GameObject Player, DeepOne, Cultist, Eye, Boss;
+            public GameObject Orb, Spell, Coin, Fragment, Tentacle, Altar, Inscription;
+        }
+
+        static Prefabs CreatePrefabs(Context ctx, bool overwrite)
         {
             var p = new Prefabs();
             p.Orb = GetOrBuild("Orbe", overwrite, () =>
-                BuildProjectile("Orbe", art[AbismoArt.Orb], art, materials, new Color(0.85f, 0.45f, 1f), 6f, 12, 0.3f, 6f, false, 0f, 1f));
+                BuildProjectile(ctx, "Orbe", ctx.Art["orbe"], new Color(0.85f, 0.45f, 1f), 6f, 12, 0.3f, 6f, false, 0f, 1f));
             p.Spell = GetOrBuild("SignoArcano", overwrite, () =>
-                BuildProjectile("SignoArcano", art[AbismoArt.Spell], art, materials, new Color(0.5f, 1f, 0.85f), 11f, 25, 0.5f, 1.2f, true, -540f, 1.2f));
-            p.Coin = GetOrBuild("Moneda", overwrite, () => BuildCoin(art, materials));
-            p.Fragment = GetOrBuild("FragmentoDeMente", overwrite, () => BuildFragment(art, materials));
-            p.Tentacle = GetOrBuild("Tentaculo", overwrite, () => BuildTentacle(art, materials));
-            p.Altar = GetOrBuild("AltarDelSignoAntiguo", overwrite, () => BuildAltar(art, materials));
-            p.Inscription = GetOrBuild("Inscripcion", overwrite, () => BuildInscription(art));
-            p.Player = GetOrBuild("Jugador", overwrite, () => BuildPlayer(art, materials, p, playerLayer));
+                BuildProjectile(ctx, "SignoArcano", ctx.Art["signo_arcano"], new Color(0.45f, 1f, 0.82f), 11f, 25, 0.5f, 1.2f, true, -540f, 1.1f));
+            p.Coin = GetOrBuild("Moneda", overwrite, () => BuildCoin(ctx));
+            p.Fragment = GetOrBuild("FragmentoDeMente", overwrite, () => BuildFragment(ctx));
+            p.Tentacle = GetOrBuild("Tentaculo", overwrite, () => BuildTentacle(ctx));
+            p.Altar = GetOrBuild("AltarDelSignoAntiguo", overwrite, () => BuildAltar(ctx));
+            p.Inscription = GetOrBuild("Inscripcion", overwrite, () => BuildInscription(ctx));
+            p.Player = GetOrBuild("Jugador", overwrite, () => BuildPlayer(ctx, p));
 
-            var goldPrefab = p.Coin.GetComponent<GoldPickup>();
-            p.DeepOne = GetOrBuild("Profundo", overwrite, () => BuildDeepOne(art, materials, enemyLayer, goldPrefab));
-            p.Cultist = GetOrBuild("Sectario", overwrite, () => BuildCultist(art, materials, enemyLayer, goldPrefab, p));
-            p.Eye = GetOrBuild("OjoDelVacio", overwrite, () => BuildEye(art, materials, enemyLayer, goldPrefab));
-            p.Boss = GetOrBuild("Arcipreste", overwrite, () => BuildBoss(art, materials, enemyLayer, goldPrefab, p));
+            var gold = p.Coin.GetComponent<GoldPickup>();
+            p.DeepOne = GetOrBuild("Profundo", overwrite, () => BuildEnemy<DeepOneEnemy>(ctx, "Profundo", "profundo", new Vector2(0.9f, 1.6f), false, gold,
+                e => { e.ConfigureStats("Profundo", 45, 20, 0f, true); e.ConfigureDeath(0.95f); }, null));
+            p.Cultist = GetOrBuild("Sectario", overwrite, () => BuildEnemy<CultistEnemy>(ctx, "Sectario", "sectario", new Vector2(0.8f, 1.85f), false, gold,
+                e => { e.ConfigureStats("Sectario", 30, 25, 0f, true); e.ConfigureDeath(1.05f); e.projectilePrefab = p.Orb.GetComponent<Projectile>(); },
+                v => AddLight(v, new Vector2(0.55f, 2.6f), new Color(1f, 0.55f, 0.25f), 0.9f, 2.4f, 0.7f, true, 0.3f)));
+            p.Eye = GetOrBuild("OjoDelVacio", overwrite, () => BuildEnemy<FlyingEyeEnemy>(ctx, "OjoDelVacio", "ojo", new Vector2(0.9f, 0.9f), true, gold,
+                e => { e.ConfigureStats("Ojo del Vacío", 22, 15, 0f, true); e.ConfigureDeath(0.6f); },
+                v => AddLight(v, new Vector2(0.2f, 0.2f), new Color(1f, 0.3f, 0.3f), 0.7f, 2f, 0.7f)));
+            p.Boss = GetOrBuild("Arcipreste", overwrite, () => BuildEnemy<BossArchpriest>(ctx, "Arcipreste", "arcipreste", new Vector2(1.9f, 3.9f), false, gold,
+                e =>
+                {
+                    e.ConfigureStats("El Arcipreste de las Mareas", 420, 300, 1f, false);
+                    e.ConfigureDeath(2.2f);
+                    e.tentaclePrefab = p.Tentacle.GetComponent<TentacleStrike>();
+                    e.orbPrefab = p.Orb.GetComponent<Projectile>();
+                },
+                v => AddLight(v, new Vector2(0.4f, 4.6f), new Color(0.45f, 1f, 0.8f), 1.1f, 4.5f, 0.6f, true, 0.15f)));
             return p;
         }
 
-        static GameObject BuildDeepOne(Art art, Materials materials, int enemyLayer, GoldPickup goldPrefab)
+        static GameObject BuildPlayer(Context ctx, Prefabs prefabs)
         {
-            var deepOne = EnemyBody("Profundo", art[AbismoArt.DeepOne], materials, enemyLayer, new Vector2(0.9f, 1.5f), false);
-            var deepOneAI = deepOne.Root.AddComponent<DeepOneEnemy>();
-            Wire(deepOneAI, deepOne, goldPrefab);
-            deepOneAI.ConfigureStats("Profundo", 45, 20, 0f, true);
-            return SavePrefab(deepOne.Root, "Profundo");
-        }
-
-        static GameObject BuildCultist(Art art, Materials materials, int enemyLayer, GoldPickup goldPrefab, Prefabs p)
-        {
-            var cultist = EnemyBody("Sectario", art[AbismoArt.Cultist], materials, enemyLayer, new Vector2(0.8f, 1.8f), false);
-            AddGlow(cultist.Visual, art, materials, new Vector2(0.34f, 1.75f), 0.25f, new Color(1f, 0.55f, 0.25f, 0.45f), 4);
-            var cultistAI = cultist.Root.AddComponent<CultistEnemy>();
-            Wire(cultistAI, cultist, goldPrefab);
-            cultistAI.projectilePrefab = p.Orb.GetComponent<Projectile>();
-            cultistAI.ConfigureStats("Sectario", 30, 25, 0f, true);
-            return SavePrefab(cultist.Root, "Sectario");
-        }
-
-        static GameObject BuildEye(Art art, Materials materials, int enemyLayer, GoldPickup goldPrefab)
-        {
-            var eye = EnemyBody("OjoDelVacio", art[AbismoArt.Eye], materials, enemyLayer, new Vector2(0.9f, 0.9f), true);
-            AddGlow(eye.Visual, art, materials, new Vector2(0f, 0.19f), 0.45f, new Color(1f, 0.3f, 0.35f, 0.25f), 4);
-            var eyeAI = eye.Root.AddComponent<FlyingEyeEnemy>();
-            Wire(eyeAI, eye, goldPrefab);
-            eyeAI.ConfigureStats("Ojo del Vacío", 22, 15, 0f, true);
-            return SavePrefab(eye.Root, "OjoDelVacio");
-        }
-
-        static GameObject BuildBoss(Art art, Materials materials, int enemyLayer, GoldPickup goldPrefab, Prefabs p)
-        {
-            var boss = EnemyBody("Arcipreste", art[AbismoArt.Boss], materials, enemyLayer, new Vector2(1.9f, 3.6f), false);
-            AddGlow(boss.Visual, art, materials, new Vector2(0.34f, 2.9f), 0.2f, new Color(0.85f, 1f, 0.45f, 0.5f), 4);
-            AddGlow(boss.Visual, art, materials, new Vector2(0.03f, 3.45f), 0.45f, new Color(0.45f, 1f, 0.8f, 0.35f), 4);
-            var bossAI = boss.Root.AddComponent<BossArchpriest>();
-            Wire(bossAI, boss, goldPrefab);
-            bossAI.tentaclePrefab = p.Tentacle.GetComponent<TentacleStrike>();
-            bossAI.orbPrefab = p.Orb.GetComponent<Projectile>();
-            bossAI.ConfigureStats("El Arcipreste de las Mareas", 420, 300, 1f, false);
-            return SavePrefab(boss.Root, "Arcipreste");
-        }
-
-        static GameObject BuildProjectile(string name, Sprite sprite, Art art, Materials materials, Color color,
-                                          float speed, int damage, float radius, float life, bool piercing, float spin, float scale)
-        {
-            var root = new GameObject(name);
-            AddGlow(root, art, materials, Vector2.zero, 0.3f * scale, new Color(color.r, color.g, color.b, 0.45f), 29);
-            var sr = AddSprite(Child("Sprite", root, Vector2.zero), sprite, materials.Additive, 30, color);
-            sr.transform.localScale = new Vector3(scale, scale, 1f);
-            var projectile = root.AddComponent<Projectile>();
-            projectile.spriteRenderer = sr;
-            projectile.Configure(speed, damage, radius, life, piercing, spin);
-            return SavePrefab(root, name);
-        }
-
-        static GameObject BuildCoin(Art art, Materials materials)
-        {
-            var root = new GameObject("Moneda");
-            var visual = Child("Visual", root, Vector2.zero);
-            AddSprite(visual, art[AbismoArt.Coin], null, 15);
-            AddGlow(visual, art, materials, Vector2.zero, 0.18f, new Color(1f, 0.8f, 0.3f, 0.3f), 14);
-            root.AddComponent<GoldPickup>().visual = visual.transform;
-            return SavePrefab(root, "Moneda");
-        }
-
-        static GameObject BuildFragment(Art art, Materials materials)
-        {
-            var root = new GameObject("FragmentoDeMente");
-            var visual = Child("Visual", root, Vector2.zero);
-            AddSprite(visual, art[AbismoArt.Fragment], null, 15);
-            AddGlow(visual, art, materials, Vector2.zero, 0.5f, new Color(0.65f, 0.45f, 1f, 0.5f), 14);
-            root.AddComponent<MindFragment>().visual = visual.transform;
-            return SavePrefab(root, "FragmentoDeMente");
-        }
-
-        static GameObject BuildTentacle(Art art, Materials materials)
-        {
-            var root = new GameObject("Tentaculo");
-            var warning = AddSprite(Child("Aviso", root, Vector2.zero), art[AbismoArt.Glow], materials.Additive, 3, new Color(1f, 0.15f, 0.1f, 0.5f));
-            warning.transform.localScale = new Vector3(0.55f, 0.15f, 1f);
-            var body = Child("Cuerpo", root, Vector2.zero);
-            AddSprite(body, art[AbismoArt.Tentacle], null, 6);
-            var strike = root.AddComponent<TentacleStrike>();
-            strike.tentacle = body.transform;
-            strike.warning = warning;
-            return SavePrefab(root, "Tentaculo");
-        }
-
-        static GameObject BuildAltar(Art art, Materials materials)
-        {
-            var root = new GameObject("AltarDelSignoAntiguo");
-            AddSprite(Child("Sprite", root, Vector2.zero), art[AbismoArt.Altar], null, 2);
-            var glow = AddGlow(root, art, materials, new Vector2(0f, 1.95f), 0.9f, new Color(0.45f, 1f, 0.8f, 0.1f), 3);
-            var box = root.AddComponent<BoxCollider2D>();
-            box.isTrigger = true;
-            box.size = new Vector2(2.4f, 2.6f);
-            box.offset = new Vector2(0f, 1.3f);
-            root.AddComponent<ElderSignAltar>().glow = glow;
-            return SavePrefab(root, "AltarDelSignoAntiguo");
-        }
-
-        static GameObject BuildInscription(Art art)
-        {
-            var root = new GameObject("Inscripcion");
-            AddSprite(Child("Sprite", root, Vector2.zero), art[AbismoArt.Inscription], null, 2);
-            var box = root.AddComponent<BoxCollider2D>();
-            box.isTrigger = true;
-            box.size = new Vector2(1.8f, 2.2f);
-            box.offset = new Vector2(0f, 1.1f);
-            root.AddComponent<LoreInscription>();
-            return SavePrefab(root, "Inscripcion");
-        }
-
-        static GameObject BuildPlayer(Art art, Materials materials, Prefabs prefabs, int layer)
-        {
-            var root = new GameObject("Jugador") { layer = layer };
+            var root = new GameObject("Jugador") { layer = ctx.PlayerLayer };
             var rb = root.AddComponent<Rigidbody2D>();
             rb.gravityScale = 3.2f;
             rb.freezeRotation = true;
@@ -497,36 +523,23 @@ namespace Abismo.EditorTools
             capsule.offset = new Vector2(0f, 0.9f);
             root.AddComponent<PlayerStats>();
             var controller = root.AddComponent<PlayerController>();
-            var flash = root.AddComponent<FlashEffect>();
 
-            var visual = Child("Visual", root, Vector2.zero);
-            var body = AddSprite(visual, art[AbismoArt.Player], materials.Flash, 10);
-            AddGlow(visual, art, materials, new Vector2(0.1f, 1.53f), 0.3f, new Color(0.35f, 1f, 0.75f, 0.3f), 9);
-            var pivot = Child("ArmaPivote", visual, new Vector2(0.4f, 0.9f));
-            var weapon = AddSprite(Child("Arma", pivot, Vector2.zero), art[AbismoArt.Weapon], materials.Flash, 11);
-            var slash = AddSprite(Child("Tajo", visual, new Vector2(1f, 1f)), art[AbismoArt.Slash], materials.Additive, 12, new Color(0.75f, 1f, 0.92f, 1f));
-            slash.enabled = false;
+            var (visual, body, anim, flash) = Body(root, ctx, ctx.Art.Characters["ahogado"], OrderPlayer);
+            // La mirilla de la escafandra ilumina un poco alrededor (como un farol de buzo).
+            AddLight(visual, new Vector2(0.35f, 1.55f), new Color(0.45f, 1f, 0.85f), 0.55f, 3.6f, 0.75f, true, 0.06f);
 
             controller.visual = visual.transform;
             controller.bodyRenderer = body;
-            controller.weaponPivot = pivot.transform;
-            controller.weaponRenderer = weapon;
-            controller.slashRenderer = slash;
-            controller.spellPrefab = prefabs.Spell.GetComponent<Projectile>();
+            controller.anim = anim;
             controller.flash = flash;
-            flash.renderers = new[] { body, weapon };
+            controller.spellPrefab = prefabs.Spell.GetComponent<Projectile>();
             return SavePrefab(root, "Jugador");
         }
 
-        class EnemyParts
+        static GameObject BuildEnemy<T>(Context ctx, string name, string characterId, Vector2 size, bool flying, GoldPickup gold,
+                                        System.Action<T> configure, System.Action<GameObject> decorate) where T : Enemy
         {
-            public GameObject Root, Visual;
-            public FlashEffect Flash;
-        }
-
-        static EnemyParts EnemyBody(string name, Sprite sprite, Materials materials, int layer, Vector2 size, bool flying)
-        {
-            var root = new GameObject(name) { layer = layer };
+            var root = new GameObject(name) { layer = ctx.EnemyLayer };
             var rb = root.AddComponent<Rigidbody2D>();
             rb.freezeRotation = true;
             rb.interpolation = RigidbodyInterpolation2D.Interpolate;
@@ -535,7 +548,7 @@ namespace Abismo.EditorTools
                 rb.bodyType = RigidbodyType2D.Kinematic;
                 var circle = root.AddComponent<CircleCollider2D>();
                 circle.radius = size.x * 0.5f;
-                circle.offset = new Vector2(0f, 0.15f);
+                circle.offset = Vector2.zero;
             }
             else
             {
@@ -545,41 +558,122 @@ namespace Abismo.EditorTools
                 capsule.offset = new Vector2(0f, size.y * 0.5f);
             }
 
-            var visual = Child("Visual", root, Vector2.zero);
-            var body = AddSprite(visual, sprite, materials.Flash, 5);
-            var flash = root.AddComponent<FlashEffect>();
-            flash.renderers = new[] { body };
-            return new EnemyParts { Root = root, Visual = visual, Flash = flash };
+            int order = characterId == "arcipreste" ? OrderBoss : OrderEnemies;
+            var (visual, _, anim, flash) = Body(root, ctx, ctx.Art.Characters[characterId], order);
+            decorate?.Invoke(visual);
+
+            var enemy = root.AddComponent<T>();
+            enemy.visual = visual.transform;
+            enemy.anim = anim;
+            enemy.flash = flash;
+            enemy.goldPrefab = gold;
+            configure(enemy);
+            return SavePrefab(root, name);
         }
 
-        static void Wire(Enemy enemy, EnemyParts parts, GoldPickup gold)
+        static GameObject BuildProjectile(Context ctx, string name, Sprite sprite, Color color, float speed, int damage, float radius, float life,
+                                          bool piercing, float spin, float scale)
         {
-            enemy.visual = parts.Visual.transform;
-            enemy.flash = parts.Flash;
-            enemy.goldPrefab = gold;
+            var root = new GameObject(name);
+            AddGlow(root, ctx, Vector2.zero, 0.55f * scale, new Color(color.r, color.g, color.b, 0.45f), 29);
+            var sr = AddSprite(Child("Sprite", root, Vector2.zero), sprite, ctx.Mat.Additive, 30, color);
+            sr.transform.localScale = new Vector3(scale, scale, 1f);
+            AddLight(root, Vector2.zero, color, 0.9f, 2.2f, 0.7f, true);
+            var projectile = root.AddComponent<Projectile>();
+            projectile.spriteRenderer = sr;
+            projectile.Configure(speed, damage, radius, life, piercing, spin);
+            return SavePrefab(root, name);
+        }
+
+        static GameObject BuildCoin(Context ctx)
+        {
+            var root = new GameObject("Moneda");
+            var visual = Child("Visual", root, Vector2.zero);
+            AddSprite(visual, ctx.Art["moneda"], ctx.Mat.Lit, OrderPickups);
+            AddGlow(visual, ctx, Vector2.zero, 0.3f, new Color(1f, 0.8f, 0.3f, 0.35f), OrderPickups - 1);
+            root.AddComponent<GoldPickup>().visual = visual.transform;
+            return SavePrefab(root, "Moneda");
+        }
+
+        static GameObject BuildFragment(Context ctx)
+        {
+            var root = new GameObject("FragmentoDeMente");
+            var visual = Child("Visual", root, Vector2.zero);
+            AddSprite(visual, ctx.Art["fragmento"], ctx.Mat.Emissive, OrderPickups);
+            AddGlow(visual, ctx, Vector2.zero, 0.8f, new Color(0.65f, 0.45f, 1f, 0.5f), OrderPickups - 1);
+            AddLight(root, Vector2.zero, new Color(0.7f, 0.5f, 1f), 1f, 3f, 0.7f, true, 0.2f);
+            root.AddComponent<MindFragment>().visual = visual.transform;
+            return SavePrefab(root, "FragmentoDeMente");
+        }
+
+        static GameObject BuildTentacle(Context ctx)
+        {
+            var root = new GameObject("Tentaculo");
+            var warning = AddSprite(Child("Aviso", root, Vector2.zero), ctx.Art["brillo"], ctx.Mat.Additive, OrderHazards, new Color(1f, 0.15f, 0.1f, 0.5f));
+            warning.transform.localScale = new Vector3(1.1f, 0.3f, 1f);
+            var body = Child("Cuerpo", root, Vector2.zero);
+            AddSprite(body, ctx.Art["tentaculo"], ctx.Mat.Lit, OrderEnemies + 3);
+            var strike = root.AddComponent<TentacleStrike>();
+            strike.tentacle = body.transform;
+            strike.warning = warning;
+            return SavePrefab(root, "Tentaculo");
+        }
+
+        static GameObject BuildAltar(Context ctx)
+        {
+            var root = new GameObject("AltarDelSignoAntiguo");
+            var sprite = Child("Sprite", root, Vector2.zero);
+            AddSprite(sprite, ctx.Art["altar"], ctx.Mat.Lit, OrderInteractables);
+            var runeGlow = ctx.Art.Glow("altar");
+            if (runeGlow != null) AddSprite(Child("Runa", sprite, Vector2.zero), runeGlow, ctx.Mat.Emissive, OrderInteractables + 1);
+            foreach (var anchor in ctx.Art.PropInfo["altar"].FlameAnchors) AddFlame(sprite, ctx, anchor / ArtBaker.PixelsPerUnit, false, OrderInteractables + 2);
+            var glow = AddGlow(root, ctx, new Vector2(0f, 0.85f), 1.6f, new Color(0.45f, 1f, 0.8f, 0.12f), OrderInteractables - 1);
+            AddLight(root, new Vector2(0f, 1.2f), new Color(0.45f, 1f, 0.8f), 1.2f, 5f, 0.6f, true, 0.12f);
+            var box = root.AddComponent<BoxCollider2D>();
+            box.isTrigger = true;
+            box.size = new Vector2(2.4f, 2.6f);
+            box.offset = new Vector2(0f, 1.3f);
+            root.AddComponent<ElderSignAltar>().glow = glow;
+            return SavePrefab(root, "AltarDelSignoAntiguo");
+        }
+
+        static GameObject BuildInscription(Context ctx)
+        {
+            var root = new GameObject("Inscripcion");
+            AddSprite(Child("Sprite", root, Vector2.zero), ctx.Art["inscripcion"], ctx.Mat.Lit, OrderInteractables);
+            var box = root.AddComponent<BoxCollider2D>();
+            box.isTrigger = true;
+            box.size = new Vector2(1.8f, 2.2f);
+            box.offset = new Vector2(0f, 1.1f);
+            root.AddComponent<LoreInscription>();
+            return SavePrefab(root, "Inscripcion");
         }
 
         // ------------------------------------------------------------------
         // Escena
         // ------------------------------------------------------------------
 
-        static void BuildScene(Art art, Materials materials, Tiles tiles, Prefabs prefabs, int groundLayer)
+        static void BuildScene(Context ctx)
         {
-            var level = LevelData.Load(LevelFile);
+            var level = ctx.Level;
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
+            // Colisiones invisibles (una casilla = una unidad) y el terreno pintado encima.
             var grid = new GameObject("Nivel");
             grid.AddComponent<Grid>();
-            var back = CreateTilemap("ParedDeFondo", grid.transform, -10, 0, false, false);
-            var ground = CreateTilemap("Suelo", grid.transform, 0, groundLayer, true, false);
-            var platforms = CreateTilemap("Plataformas", grid.transform, 1, groundLayer, true, true);
+            var solidTile = CollisionTile();
+            var ground = CreateTilemap("Colision", grid.transform, ctx.GroundLayer, false);
+            var platforms = CreateTilemap("Plataformas", grid.transform, ctx.GroundLayer, true);
+            BuildTerrain(ctx);
 
             var entities = new GameObject("Entidades").transform;
             var hazards = new GameObject("Peligros").transform;
             var zones = new GameObject("Zonas").transform;
+            var props = new GameObject("Decorado").transform;
 
             PlayerController player = null;
             BossArchpriest boss = null;
+            var occupied = new HashSet<Vector2Int>();
 
             for (int y = 0; y < level.Height; y++)
             {
@@ -588,31 +682,25 @@ namespace Abismo.EditorTools
                     char ch = level.At(x, y);
                     var cell = new Vector3Int(x, y, 0);
                     var feet = new Vector3(x + 0.5f, y, 0f);
-
-                    // Detrás de plataformas, enemigos y objetos de interiores también va pared de fondo.
-                    bool needsBackWall = ch != '#' && ch != ':' && ch != '.';
-                    bool indoors = level.At(x - 1, y) == ':' || level.At(x + 1, y) == ':' || level.At(x, y + 1) == ':' || level.At(x, y - 1) == ':';
-                    if (needsBackWall && indoors) back.SetTile(cell, tiles.Back);
+                    if (ch != '#' && ch != '.' && ch != ':') occupied.Add(new Vector2Int(x, y));
 
                     switch (ch)
                     {
-                        case '#':
-                            var tile = level.At(x, y + 1) == '#'
-                                ? (PixelCanvas.Hash(x, y, 1) < 0.5f ? tiles.InnerA : tiles.InnerB)
-                                : tiles.Top;
-                            ground.SetTile(cell, tile);
-                            break;
-                        case ':': back.SetTile(cell, tiles.Back); break;
-                        case '=': platforms.SetTile(cell, tiles.Platform); break;
-                        case 'P': player = Spawn(prefabs.Player, feet, entities).GetComponent<PlayerController>(); break;
-                        case 'A': Spawn(prefabs.Altar, feet, entities); break;
-                        case 'D': Spawn(prefabs.DeepOne, feet, entities); break;
-                        case 'C': Spawn(prefabs.Cultist, feet, entities); break;
-                        case 'V': Spawn(prefabs.Eye, feet + Vector3.up * 0.5f, entities); break;
-                        case 'B': boss = Spawn(prefabs.Boss, feet, entities).GetComponent<BossArchpriest>(); break;
+                        case '#': ground.SetTile(cell, solidTile); break;
+                        case '=': platforms.SetTile(cell, solidTile); break;
+                        case 'P': player = Spawn(ctx.Prefabs.Player, feet, entities).GetComponent<PlayerController>(); break;
+                        case 'A': Spawn(ctx.Prefabs.Altar, feet, entities); break;
+                        case 'D': Spawn(ctx.Prefabs.DeepOne, feet, entities); break;
+                        case 'C': Spawn(ctx.Prefabs.Cultist, feet, entities); break;
+                        case 'V': Spawn(ctx.Prefabs.Eye, feet + Vector3.up * 0.5f, entities); break;
+                        case 'B': boss = Spawn(ctx.Prefabs.Boss, feet, entities).GetComponent<BossArchpriest>(); break;
+                        case 'S': PlaceProp(ctx, "estatua_madre", feet, props, OrderPropsBack - 1); break;
+                        case 'I': PlaceProp(ctx, "idolo", feet, props, OrderPropsBack); break;
+                        case 'L': PlaceProp(ctx, "candelabro", feet, props, OrderPropsBack); break;
+                        case 'F': PlaceProp(ctx, "farol", feet, props, OrderPropsBack); break;
                         case '$':
-                            var coin = Spawn(prefabs.Coin, feet + Vector3.up * 0.4f, entities);
-                            coin.transform.localScale = new Vector3(1.4f, 1.4f, 1f);
+                            var coin = Spawn(ctx.Prefabs.Coin, feet + Vector3.up * 0.4f, entities);
+                            coin.transform.localScale = new Vector3(1.3f, 1.3f, 1f);
                             Record(coin.transform);
                             var gold = coin.GetComponent<GoldPickup>();
                             gold.Configure(30);
@@ -621,7 +709,7 @@ namespace Abismo.EditorTools
                         default:
                             if (ch >= '1' && ch <= '9')
                             {
-                                var stone = Spawn(prefabs.Inscription, feet, entities).GetComponent<LoreInscription>();
+                                var stone = Spawn(ctx.Prefabs.Inscription, feet, entities).GetComponent<LoreInscription>();
                                 stone.Configure(level.Text(ch, "Las palabras están demasiado erosionadas para leerlas."));
                                 Record(stone);
                             }
@@ -633,51 +721,72 @@ namespace Abismo.EditorTools
                     }
                 }
             }
-
             if (player == null) throw new System.Exception("El mapa " + LevelFile + " no tiene jugador (letra P).");
 
-            CreateHazards(level, art, hazards);
-            var gates = CreateGates(level, art, groundLayer);
+            BuildPlatforms(ctx, platforms.transform);
+            CreateHazards(ctx, hazards);
+            var gates = CreateGates(ctx);
             if (boss != null) CreateBossArena(boss, gates);
+            Decorate(ctx, props, occupied);
 
-            // Cámara
+            // Cámara pixel-perfect (640×360 píxeles de arte, escalados a la pantalla).
             var cameraObject = new GameObject("Main Camera") { tag = "MainCamera" };
             var cam = cameraObject.AddComponent<Camera>();
             cam.orthographic = true;
-            cam.orthographicSize = CameraSize;
+            cam.orthographicSize = HalfViewH;
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.02f, 0.035f, 0.04f);
+            cam.backgroundColor = new Color(0.01f, 0.02f, 0.02f);
+            cam.nearClipPlane = 0.3f;
+            cam.farClipPlane = 100f;
             cameraObject.AddComponent<AudioListener>();
+            PipelineSetup.ConfigureCamera(cam);
+            PipelineSetup.AddPixelPerfect(cam, (int)ArtBaker.PixelsPerUnit, RefWidth, RefHeight);
             var follow = cameraObject.AddComponent<CameraFollow>();
             follow.Configure(player.transform, new Rect(0f, 0f, level.Width, level.Height));
-            Vector3 cameraStart = ClampCamera(player.transform.position + new Vector3(1.8f, 1.6f, 0f), level);
+            Vector3 cameraStart = ClampCamera(player.transform.position + new Vector3(1.6f, 1.3f, 0f), level);
             cameraStart.z = -10f;
             cameraObject.transform.position = cameraStart;
 
-            // Sistemas
+            // Post-procesado global (bloom, viñeta, grano) y efectos reactivos.
+            var volumeObject = new GameObject("Volumen Global");
+            var volume = volumeObject.AddComponent<Volume>();
+            volume.isGlobal = true;
+            volume.priority = 0f;
+            volume.weight = 1f;
+            volume.sharedProfile = PipelineSetup.EnsurePostProfile();
+            volumeObject.AddComponent<CameraFX>();
+
+            // Luz global (la ambientación por zonas cambia su color e intensidad).
+            var lightObject = new GameObject("Luz Global 2D");
+            var globalLight = lightObject.AddComponent<Light2D>();
+            globalLight.lightType = Light2D.LightType.Global;
+            globalLight.blendStyleIndex = 0;
+            globalLight.color = new Color(0.62f, 0.78f, 0.8f);
+            globalLight.intensity = 0.75f;
+            globalLight.targetSortingLayers = SortingLayer.layers.Select(l => l.id).ToArray();
+
+            // Sistemas.
             var systems = new GameObject("Sistemas");
             systems.AddComponent<InputReader>();
             systems.AddComponent<Sfx>();
             var manager = systems.AddComponent<GameManager>();
-
-            var hudObject = new GameObject("HUD");
-            var hud = hudObject.AddComponent<HUD>();
-            hud.flaskFullSprite = art[AbismoArt.FlaskFull];
-            hud.flaskEmptySprite = art[AbismoArt.FlaskEmpty];
-            hud.goldSprite = art[AbismoArt.Coin];
-            hud.vignetteSprite = art[AbismoArt.Vignette];
+            var hud = BuildHud(ctx);
 
             manager.player = player;
             manager.cameraFollow = follow;
             manager.hud = hud;
-            manager.mindFragmentPrefab = prefabs.Fragment.GetComponent<MindFragment>();
-            manager.additiveMaterial = materials.Additive;
+            manager.mindFragmentPrefab = ctx.Prefabs.Fragment.GetComponent<MindFragment>();
+            manager.additiveMaterial = ctx.Mat.Additive;
+            manager.unlitMaterial = ctx.Mat.Unlit;
             manager.Configure(-3f, level.Text('a', "Costa de Innsmouth"));
 
-            BuildBackground(art, materials, cam, cameraStart, level);
+            var ambience = new GameObject("Ambientacion").AddComponent<ZoneAmbience>();
+            ambience.globalLight = globalLight;
+            ambience.zones = BuildBackgrounds(ctx, cameraStart);
+
             var motes = new GameObject("Motas").AddComponent<AmbientMotes>();
-            motes.sprite = art[AbismoArt.Mote];
-            motes.material = materials.Additive;
+            motes.sprite = ctx.Art["mota"];
+            motes.material = ctx.Mat.Additive;
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -703,29 +812,68 @@ namespace Abismo.EditorTools
             return go;
         }
 
-        static Tilemap CreateTilemap(string name, Transform parent, int order, int layer, bool solid, bool oneWay)
+        static Tile CollisionTile()
+        {
+            string path = Root + "/Art/ColisionCasilla.asset";
+            var tile = AssetDatabase.LoadAssetAtPath<Tile>(path);
+            if (tile == null)
+            {
+                tile = ScriptableObject.CreateInstance<Tile>();
+                AssetDatabase.CreateAsset(tile, path);
+            }
+            tile.sprite = null;
+            tile.colliderType = Tile.ColliderType.Grid;
+            EditorUtility.SetDirty(tile);
+            return tile;
+        }
+
+        /// <summary>Tilemap solo de colisión (sin dibujo: lo que se ve es el terreno pintado).</summary>
+        static Tilemap CreateTilemap(string name, Transform parent, int layer, bool oneWay)
         {
             var go = new GameObject(name) { layer = layer };
             go.transform.SetParent(parent, false);
             var tilemap = go.AddComponent<Tilemap>();
-            var tilemapRenderer = go.AddComponent<TilemapRenderer>();
-            tilemapRenderer.sortingOrder = order;
-            if (DefaultSpriteMaterial != null) tilemapRenderer.sharedMaterial = DefaultSpriteMaterial;
-            if (solid)
+            var collider = go.AddComponent<TilemapCollider2D>();
+            if (oneWay)
             {
-                var collider = go.AddComponent<TilemapCollider2D>();
-                if (oneWay)
-                {
-                    // Plataformas que se atraviesan desde abajo (y hacia abajo con Abajo + Saltar).
-                    collider.usedByEffector = true;
-                    var effector = go.AddComponent<PlatformEffector2D>();
-                    effector.useOneWay = true;
-                    effector.surfaceArc = 170f;
-                    effector.useSideFriction = false;
-                    effector.useSideBounce = false;
-                }
+                // Plataformas que se atraviesan desde abajo (y hacia abajo con Abajo + Saltar).
+                collider.usedByEffector = true;
+                var effector = go.AddComponent<PlatformEffector2D>();
+                effector.useOneWay = true;
+                effector.surfaceArc = 170f;
+                effector.useSideFriction = false;
+                effector.useSideBounce = false;
             }
             return tilemap;
+        }
+
+        static void BuildTerrain(Context ctx)
+        {
+            var solid = new GameObject("Terreno").transform;
+            var back = new GameObject("Pared de fondo").transform;
+            foreach (var (chunk, sprite, isBack) in ctx.Art.Terrain)
+            {
+                var go = new GameObject($"Trozo {chunk.TileX},{chunk.TileY}");
+                go.transform.SetParent(isBack ? back : solid, false);
+                go.transform.position = new Vector3(chunk.TileX, chunk.TileY, 0f);
+                AddSprite(go, sprite, ctx.Mat.Lit, isBack ? OrderBackWall : OrderTerrain);
+            }
+        }
+
+        /// <summary>Tablones de madera sobre cada tramo de plataforma.</summary>
+        static void BuildPlatforms(Context ctx, Transform parent)
+        {
+            var level = ctx.Level;
+            foreach (var (start, length, y) in level.Runs('='))
+            {
+                var go = new GameObject("Tablon");
+                go.transform.SetParent(parent, false);
+                go.transform.position = new Vector3(start + length * 0.5f, y + 1f, 0f);
+                var sr = AddSprite(go, ctx.Art["plataforma"], ctx.Mat.Lit, OrderPlatforms);
+                sr.drawMode = SpriteDrawMode.Tiled;
+                sr.tileMode = SpriteTileMode.Continuous;
+                sr.size = new Vector2(length, 0.5f);
+            }
         }
 
         static void CreateAreaTrigger(string title, Vector3 position, Transform parent)
@@ -741,73 +889,63 @@ namespace Abismo.EditorTools
         }
 
         /// <summary>Coral espinoso (^) y agua abisal (~): una pieza por cada tramo horizontal.</summary>
-        static void CreateHazards(LevelData level, Art art, Transform parent)
+        static void CreateHazards(Context ctx, Transform parent)
         {
-            for (int y = 0; y < level.Height; y++)
+            var level = ctx.Level;
+            foreach (var (start, length, y) in level.Runs('^'))
             {
-                int x = 0;
-                while (x < level.Width)
-                {
-                    char ch = level.At(x, y);
-                    if (ch != '^' && ch != '~')
-                    {
-                        x++;
-                        continue;
-                    }
-                    int start = x;
-                    while (x < level.Width && level.At(x, y) == ch) x++;
-                    int length = x - start;
-                    bool spikes = ch == '^';
-
-                    var go = new GameObject(spikes ? "CoralEspinoso" : "AguaAbisal");
-                    go.transform.SetParent(parent, false);
-                    go.transform.position = new Vector3(start + length * 0.5f, y + 0.5f, 0f);
-                    Sprite sprite = spikes ? art[AbismoArt.Spikes]
-                        : (level.At(start, y + 1) == '~' ? art[AbismoArt.Water] : art[AbismoArt.WaterTop]);
-                    var sr = AddSprite(go, sprite, null, spikes ? 1 : 3);
-                    sr.drawMode = SpriteDrawMode.Tiled;
-                    sr.tileMode = SpriteTileMode.Continuous;
-                    sr.size = new Vector2(length, 1f);
-
-                    var box = go.AddComponent<BoxCollider2D>();
-                    box.isTrigger = true;
-                    box.size = spikes ? new Vector2(length - 0.2f, 0.5f) : new Vector2(length, 0.8f);
-                    box.offset = spikes ? new Vector2(0f, -0.2f) : new Vector2(0f, -0.1f);
-                    go.AddComponent<Hazard>().Configure(spikes ? 20 : 30, false);
-                }
+                var go = new GameObject("CoralEspinoso");
+                go.transform.SetParent(parent, false);
+                go.transform.position = new Vector3(start + length * 0.5f, y, 0f);
+                var sr = AddSprite(go, ctx.Art["coral_espinas"], ctx.Mat.Lit, OrderHazards);
+                sr.drawMode = SpriteDrawMode.Tiled;
+                sr.tileMode = SpriteTileMode.Continuous;
+                sr.size = new Vector2(length, 1f);
+                var box = go.AddComponent<BoxCollider2D>();
+                box.isTrigger = true;
+                box.size = new Vector2(length - 0.2f, 0.5f);
+                box.offset = new Vector2(0f, 0.3f);
+                go.AddComponent<Hazard>().Configure(20, false);
+            }
+            foreach (var (start, length, y) in level.Runs('~'))
+            {
+                bool surface = level.At(start, y + 1) != '~';
+                var go = new GameObject(surface ? "AguaAbisal" : "AguaProfunda");
+                go.transform.SetParent(parent, false);
+                go.transform.position = new Vector3(start + length * 0.5f, y + 0.5f, 0f);
+                string anim = surface ? "agua" : "agua_profunda";
+                var frames = ctx.Art.Animations[anim];
+                var sr = AddSprite(go, frames[0], surface ? ctx.Mat.Lit : ctx.Mat.Unlit, OrderWater);
+                sr.drawMode = SpriteDrawMode.Tiled;
+                sr.tileMode = SpriteTileMode.Continuous;
+                sr.size = new Vector2(length, 1f);
+                go.AddComponent<LoopingSprite>().Configure(frames, ctx.Art.AnimationFps[anim]);
+                var box = go.AddComponent<BoxCollider2D>();
+                box.isTrigger = true;
+                box.size = new Vector2(length, 0.8f);
+                box.offset = new Vector2(0f, -0.1f);
+                go.AddComponent<Hazard>().Configure(30, false);
             }
         }
 
         /// <summary>Rejas (|) de la arena del jefe: una por cada columna vertical.</summary>
-        static List<GameObject> CreateGates(LevelData level, Art art, int groundLayer)
+        static List<GameObject> CreateGates(Context ctx)
         {
+            var level = ctx.Level;
             var gates = new List<GameObject>();
             Transform parent = null;
-            for (int x = 0; x < level.Width; x++)
+            foreach (var (x, start, length) in level.VerticalRuns('|'))
             {
-                int y = 0;
-                while (y < level.Height)
-                {
-                    if (level.At(x, y) != '|')
-                    {
-                        y++;
-                        continue;
-                    }
-                    int start = y;
-                    while (y < level.Height && level.At(x, y) == '|') y++;
-                    int length = y - start;
-
-                    if (parent == null) parent = new GameObject("Rejas").transform;
-                    var gate = new GameObject("Reja") { layer = groundLayer };
-                    gate.transform.SetParent(parent, false);
-                    gate.transform.position = new Vector3(x + 0.5f, start + length * 0.5f, 0f);
-                    var sr = AddSprite(gate, art[AbismoArt.Gate], null, 4);
-                    sr.drawMode = SpriteDrawMode.Tiled;
-                    sr.tileMode = SpriteTileMode.Continuous;
-                    sr.size = new Vector2(1f, length);
-                    gate.AddComponent<BoxCollider2D>().size = new Vector2(1f, length);
-                    gates.Add(gate);
-                }
+                if (parent == null) parent = new GameObject("Rejas").transform;
+                var gate = new GameObject("Reja") { layer = ctx.GroundLayer };
+                gate.transform.SetParent(parent, false);
+                gate.transform.position = new Vector3(x + 0.5f, start + length * 0.5f, 0f);
+                var sr = AddSprite(gate, ctx.Art["reja"], ctx.Mat.Lit, OrderHazards);
+                sr.drawMode = SpriteDrawMode.Tiled;
+                sr.tileMode = SpriteTileMode.Continuous;
+                sr.size = new Vector2(1f, length);
+                gate.AddComponent<BoxCollider2D>().size = new Vector2(1f, length);
+                gates.Add(gate);
             }
             return gates;
         }
@@ -848,78 +986,323 @@ namespace Abismo.EditorTools
 
         static Vector3 ClampCamera(Vector3 p, LevelData level)
         {
-            float halfH = CameraSize, halfW = CameraSize * 16f / 9f;
-            p.x = level.Width < halfW * 2f ? level.Width * 0.5f : Mathf.Clamp(p.x, halfW, level.Width - halfW);
-            p.y = level.Height < halfH * 2f ? level.Height * 0.5f : Mathf.Clamp(p.y, halfH, level.Height - halfH);
+            p.x = level.Width < HalfViewW * 2f ? level.Width * 0.5f : Mathf.Clamp(p.x, HalfViewW, level.Width - HalfViewW);
+            p.y = level.Height < HalfViewH * 2f ? level.Height * 0.5f : Mathf.Clamp(p.y, HalfViewH, level.Height - HalfViewH);
             return p;
         }
 
         // ------------------------------------------------------------------
-        // Fondo con paralaje
+        // Decorado
         // ------------------------------------------------------------------
 
-        static void BuildBackground(Art art, Materials materials, Camera cam, Vector3 cameraStart, LevelData level)
+        /// <summary>Coloca un objeto de decorado con sus llamas (y luz cálida) y su brillo.</summary>
+        static GameObject PlaceProp(Context ctx, string name, Vector3 position, Transform parent, int order)
         {
-            var root = new GameObject("Fondo").transform;
-            float halfW = CameraSize * 16f / 9f;
-            float minCamera = halfW, maxCamera = Mathf.Max(halfW, level.Width - halfW);
-            float dMin = minCamera - cameraStart.x, dMax = maxCamera - cameraStart.x;
-
-            // Cielo: hijo de la cámara, así siempre la cubre.
-            var sky = new GameObject("Cielo");
-            sky.transform.SetParent(cam.transform, false);
-            sky.transform.localPosition = new Vector3(0f, 0f, 50f);
-            AddSprite(sky, art[AbismoArt.Sky], null, -100);
-            Vector3 skySize = art[AbismoArt.Sky].bounds.size;
-            sky.transform.localScale = new Vector3(MaxHalfWidth * 2.2f / skySize.x, CameraSize * 2.4f / skySize.y, 1f);
-
-            void Layer(string name, string spriteName, int order, Vector2 factor, float relativeX, float y, bool tiled,
-                       Color color, Vector2 scroll, Material material = null)
+            var info = ctx.Art.PropInfo[name];
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.position = position;
+            AddSprite(go, ctx.Art[name], info.Unlit ? ctx.Mat.Unlit : ctx.Mat.Lit, order);
+            var glow = ctx.Art.Glow(name);
+            if (glow != null) AddSprite(Child("Brillo", go, Vector2.zero), glow, ctx.Mat.Emissive, order + 1);
+            if (info.FlameAnchors.Count > 0)
             {
-                Sprite sprite = art[spriteName];
-                var go = new GameObject(name);
-                go.transform.SetParent(root, false);
-                var sr = AddSprite(go, sprite, material, order, color);
-                float width = sprite.bounds.size.x;
-                float x = cameraStart.x + relativeX;
-                if (tiled)
+                Vector2 center = Vector2.zero;
+                bool big = name == "farol";
+                foreach (var anchor in info.FlameAnchors)
                 {
-                    float travel = Mathf.Abs((1f - factor.x) * (dMax - dMin));
-                    float needed = 2f * MaxHalfWidth + travel + 2f * width + 4f;
-                    sr.drawMode = SpriteDrawMode.Tiled;
-                    sr.tileMode = SpriteTileMode.Continuous;
-                    sr.size = new Vector2(Mathf.Ceil(needed / width) * width, sprite.bounds.size.y);
-                    x = cameraStart.x + (1f - factor.x) * (dMin + dMax) * 0.5f;
+                    Vector2 local = anchor / ArtBaker.PixelsPerUnit;
+                    if (!big) AddFlame(go, ctx, local, false, order + 2);
+                    center += local;
                 }
-                go.transform.position = new Vector3(x, y, 0f);
-                go.AddComponent<ParallaxLayer>().Configure(factor, scroll, tiled ? width : 0f);
+                center /= info.FlameAnchors.Count;
+                float radius = name == "estatua_madre" ? 6f : big ? 5.5f : 4.2f;
+                AddLight(go, center + Vector2.up * 0.2f, new Color(1f, 0.64f, 0.32f), big ? 1.2f : 1.05f, radius, 0.6f, true, 0.22f);
+            }
+            return go;
+        }
+
+        /// <summary>
+        /// Decorado automático según la zona: escombros, velas, columnas rotas, cadenas y estandartes que cuelgan
+        /// del techo, corales, huesos... (determinista: el mismo mapa da siempre el mismo decorado).
+        /// </summary>
+        static void Decorate(Context ctx, Transform parent, HashSet<Vector2Int> occupied)
+        {
+            var level = ctx.Level;
+            int lastFloorX = -10, lastCeilX = -10;
+            for (int x = 1; x < level.Width - 1; x++)
+            {
+                var zone = level.ZoneAt(x);
+                for (int y = 1; y < level.Height - 1; y++)
+                {
+                    char here = level.At(x, y);
+                    bool air = here == '.' || here == ':';
+                    if (!air) continue;
+                    float h = PixelCanvas.Hash(x, y, 4242);
+
+                    // Suelo: casilla libre con roca debajo y aire encima.
+                    if (level.At(x, y - 1) == '#' && x - lastFloorX >= 3 && !NearOccupied(occupied, x, y, 2) && level.At(x, y + 1) != '#')
+                    {
+                        string prop = FloorProp(zone, h, level.IsBackWall(x, y));
+                        if (prop != null)
+                        {
+                            PlaceProp(ctx, prop, new Vector3(x + 0.5f, y, 0f), parent, OrderPropsBack);
+                            lastFloorX = x;
+                        }
+                    }
+                    // Techo: casilla libre con roca encima (cuelgan cosas).
+                    if (level.At(x, y + 1) == '#' && x - lastCeilX >= 4 && level.At(x, y - 1) != '#' && level.At(x, y - 2) != '#')
+                    {
+                        string prop = CeilingProp(zone, PixelCanvas.Hash(x, y, 777));
+                        if (prop != null)
+                        {
+                            PlaceProp(ctx, prop, new Vector3(x + 0.5f, y + 1f, 0f), parent, OrderPropsHanging);
+                            lastCeilX = x;
+                        }
+                    }
+                }
             }
 
-            float cy = cameraStart.y;
-            Layer("Luna", AbismoArt.Moon, -98, new Vector2(0.98f, 0.97f), -7f, cy + 3.5f, false, Color.white, Vector2.zero);
-            Layer("ElDurmiente", AbismoArt.Colossus, -97, new Vector2(0.95f, 0.93f), 6f, cy - 7.2f, false, Color.white, Vector2.zero);
-            Layer("CiudadCiclopea", AbismoArt.FarCity, -95, new Vector2(0.88f, 0.9f), 0f, cy - 7.5f, true, Color.white, Vector2.zero);
-            Layer("Ruinas", AbismoArt.Ruins, -90, new Vector2(0.7f, 0.8f), 0f, cy - 8f, true, Color.white, Vector2.zero);
-            Layer("NieblaLejana", AbismoArt.Fog, -85, new Vector2(0.6f, 0.75f), 0f, cy - 4f, true,
-                  new Color(0.6f, 0.95f, 0.85f, 0.18f), new Vector2(0.25f, 0f));
-            Layer("NieblaCercana", AbismoArt.Fog, 50, new Vector2(-0.25f, 1f), 0f, cy - 5.5f, true,
-                  new Color(0.65f, 0.95f, 0.9f, 0.08f), new Vector2(0.6f, 0f));
+            // Rayos de luz en el santuario y siluetas en primer plano (dan profundidad).
+            for (int x = 6; x < level.Width - 6; x += 1)
+            {
+                var zone = level.ZoneAt(x);
+                int floor = level.FloorBelowTop(x);
+                if (floor < 0) continue;
+                if (zone == Zone.Sanctuary && x % 9 == 4)
+                {
+                    var shaft = AddSprite(new GameObject("RayoDeLuz"), ctx.Art.Animations["rayo_luz"][0], ctx.Mat.Additive, OrderShafts, new Color(1f, 0.9f, 0.7f, 0.5f));
+                    shaft.transform.SetParent(parent, false);
+                    shaft.transform.position = new Vector3(x + 0.5f, floor + 7f, 0f);
+                    shaft.gameObject.AddComponent<LoopingSprite>().Configure(ctx.Art.Animations["rayo_luz"], ctx.Art.AnimationFps["rayo_luz"]);
+                }
+                if (x % 37 == 18)
+                {
+                    string name = level.IsBackWall(x, floor) ? "primer_plano_columna" : "primer_plano_escombros";
+                    var fg = PlaceProp(ctx, name, new Vector3(x + 0.5f, floor - 1.5f, 0f), parent, OrderForeground);
+                    var parallax = fg.AddComponent<ParallaxLayer>();
+                    parallax.Configure(new Vector2(-0.18f, -0.06f), Vector2.zero, 0f);
+                    parallax.SetReference(new Vector2(x + 0.5f, floor + 3f)); // en su sitio cuando la cámara lo tiene delante
+                }
+            }
+        }
+
+        static bool NearOccupied(HashSet<Vector2Int> occupied, int x, int y, int radius)
+        {
+            for (int dx = -radius; dx <= radius; dx++)
+                if (occupied.Contains(new Vector2Int(x + dx, y))) return true;
+            return false;
+        }
+
+        static string FloorProp(Zone zone, float h, bool indoors)
+        {
+            switch (zone)
+            {
+                case Zone.Coast:
+                    if (h < 0.05f) return "escombros_a";
+                    if (h < 0.075f) return "ancla";
+                    if (h < 0.1f) return "red";
+                    if (h < 0.12f) return "huesos";
+                    if (h < 0.14f) return "coral_a";
+                    return null;
+                case Zone.Ruins:
+                    if (h < 0.06f) return "escombros_b";
+                    if (h < 0.1f) return "escombros_c";
+                    if (h < 0.14f) return indoors ? "columna_rota" : "escombros_a";
+                    if (h < 0.17f) return "velas_suelo";
+                    return null;
+                case Zone.Sanctuary:
+                    if (h < 0.08f) return "velas_suelo";
+                    if (h < 0.11f) return "escombros_a";
+                    if (h < 0.13f) return "columna_rota";
+                    return null;
+                default:
+                    if (h < 0.07f) return "coral_a";
+                    if (h < 0.13f) return "coral_b";
+                    if (h < 0.16f) return "huesos";
+                    if (h < 0.18f) return "escombros_b";
+                    return null;
+            }
+        }
+
+        static string CeilingProp(Zone zone, float h)
+        {
+            switch (zone)
+            {
+                case Zone.Ruins: return h < 0.1f ? "cadenas" : h < 0.13f ? "jaula" : null;
+                case Zone.Sanctuary: return h < 0.1f ? "estandarte" : h < 0.15f ? "cadenas" : h < 0.18f ? "jaula" : null;
+                default: return null;
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // Fondos con paralaje por zona
+        // ------------------------------------------------------------------
+
+        static ZoneAmbience.Zone[] BuildBackgrounds(Context ctx, Vector3 cameraStart)
+        {
+            var level = ctx.Level;
+            var root = new GameObject("Fondos").transform;
+            float minCamera = HalfViewW, maxCamera = Mathf.Max(HalfViewW, level.Width - HalfViewW);
+            float dMin = minCamera - cameraStart.x, dMax = maxCamera - cameraStart.x;
+            float viewBottom = cameraStart.y - HalfViewH;
+
+            var lighting = new Dictionary<Zone, (Color color, float intensity)>
+            {
+                { Zone.Coast, (new Color(0.62f, 0.8f, 0.82f), 0.78f) },
+                { Zone.Ruins, (new Color(0.55f, 0.75f, 0.68f), 0.62f) },
+                { Zone.Sanctuary, (new Color(0.9f, 0.76f, 0.62f), 0.66f) },
+                { Zone.Reef, (new Color(0.62f, 0.62f, 0.9f), 0.72f) },
+            };
+
+            var result = new List<ZoneAmbience.Zone>();
+            var starts = level.ZoneStarts;
+            for (int z = 0; z < starts.Count; z++)
+            {
+                var zone = level.ZoneAt(Mathf.Min(level.Width - 1, starts[z]));
+                var zoneRoot = new GameObject("Fondo " + zone).transform;
+                zoneRoot.SetParent(root, false);
+                foreach (var (layer, sprite) in ctx.Art.Backgrounds[zone])
+                {
+                    var go = new GameObject(layer.Name);
+                    go.transform.SetParent(zoneRoot, false);
+                    float width = sprite.bounds.size.x, height = sprite.bounds.size.y;
+                    float travel = Mathf.Abs((1f - layer.Parallax.x) * (dMax - dMin));
+                    float needed = 2f * HalfViewW + travel + 2f * width + 4f;
+                    var sr = AddSprite(go, sprite, layer.Lit ? ctx.Mat.Lit : ctx.Mat.Unlit, layer.Order, (Color)layer.Tint);
+                    sr.drawMode = SpriteDrawMode.Tiled;
+                    sr.tileMode = SpriteTileMode.Continuous;
+                    float tiledWidth = Mathf.Ceil(needed / width) * width;
+                    sr.size = new Vector2(tiledWidth, height);
+                    float x = cameraStart.x + (1f - layer.Parallax.x) * (dMin + dMax) * 0.5f - tiledWidth * 0.5f;
+                    float y = viewBottom + layer.BottomOffset;
+                    go.transform.position = new Vector3(x, y, 0f);
+                    var parallax = go.AddComponent<ParallaxLayer>();
+                    parallax.Configure(layer.Parallax, layer.Scroll, layer.Scroll != Vector2.zero ? width : 0f);
+                    parallax.SetReference(cameraStart);
+
+                    // Rellenos para que nunca se vea el final de la capa al subir o bajar la cámara.
+                    if (layer.FillBelow.a > 0) Fill(ctx, go, new Vector2(tiledWidth * 0.5f, -20f), new Vector2(tiledWidth, 40f), layer.FillBelow, layer.Order, layer.Lit);
+                    if (layer.FillAbove.a > 0) Fill(ctx, go, new Vector2(tiledWidth * 0.5f, height + 20f), new Vector2(tiledWidth, 40f), layer.FillAbove, layer.Order, layer.Lit);
+                }
+                var light = lighting[zone];
+                result.Add(new ZoneAmbience.Zone
+                {
+                    name = zone.ToString(), startX = starts[z], lightColor = light.color, lightIntensity = light.intensity, backdrop = zoneRoot.gameObject,
+                });
+            }
+            return result.ToArray();
+        }
+
+        static void Fill(Context ctx, GameObject parent, Vector2 center, Vector2 size, Color32 color, int order, bool lit)
+        {
+            var go = Child("Relleno", parent, center);
+            var sr = AddSprite(go, ctx.Art["pixel"], lit ? ctx.Mat.Lit : ctx.Mat.Unlit, order, (Color)color);
+            sr.drawMode = SpriteDrawMode.Sliced;
+            sr.size = size;
+        }
+
+        // ------------------------------------------------------------------
+        // Interfaz
+        // ------------------------------------------------------------------
+
+        static HUD BuildHud(Context ctx)
+        {
+            var hud = new GameObject("HUD").AddComponent<HUD>();
+            var a = ctx.Art;
+            hud.portraitSprite = a["ui_retrato"];
+            hud.barFrameSprite = a["ui_barra_marco"];
+            hud.healthFillSprite = a["ui_barra_vida"];
+            hud.revelationFillSprite = a["ui_barra_revelacion"];
+            hud.barBackSprite = a["ui_barra_fondo"];
+            hud.barTrailSprite = a["ui_barra_rastro"];
+            hud.flaskFullSprite = a["ui_frasco_lleno"];
+            hud.flaskEmptySprite = a["ui_frasco_vacio"];
+            hud.goldSprite = a["ui_oro"];
+            hud.goldFrameSprite = a["ui_marco_oro"];
+            hud.panelSprite = a["ui_panel"];
+            hud.separatorSprite = a["ui_separador"];
+            hud.bossFrameSprite = a["ui_jefe_marco"];
+            hud.promptSprite = a["ui_aviso"];
+            hud.vignetteSprite = a["ui_vineta"];
+            hud.signSprite = a["ui_signo"];
+            hud.titleFont = a.TitleFont;
+            hud.textFont = a.TextFont;
+            return hud;
         }
 
         // ------------------------------------------------------------------
         // Lectura del mapa de texto
         // ------------------------------------------------------------------
 
-        class LevelData
+        sealed class LevelData
         {
             public int Width, Height;
             char[,] cells;
             readonly Dictionary<char, string> texts = new Dictionary<char, string>();
+            public List<int> ZoneStarts = new List<int> { 0 };
 
             /// <summary>Fuera del mapa todo cuenta como roca sólida.</summary>
             public char At(int x, int y) => x < 0 || y < 0 || x >= Width || y >= Height ? '#' : cells[x, y];
 
             public string Text(char key, string fallback) => texts.TryGetValue(key, out var t) ? t : fallback;
+
+            /// <summary>Zona (Costa, Ruinas, Santuario, Arrecife) de una columna, según la línea "zonas:" del mapa.</summary>
+            public Zone ZoneAt(int x)
+            {
+                int index = 0;
+                for (int i = 0; i < ZoneStarts.Count; i++) if (x >= ZoneStarts[i]) index = i;
+                return (Zone)Mathf.Min(index, 3);
+            }
+
+            /// <summary>Pared de fondo: ':' y lo que hay dentro de los interiores (enemigos, objetos...).</summary>
+            public bool IsBackWall(int x, int y)
+            {
+                char c = At(x, y);
+                if (c == ':') return true;
+                if (c == '#' || c == '.') return false;
+                return At(x - 1, y) == ':' || At(x + 1, y) == ':' || At(x, y + 1) == ':' || At(x, y - 1) == ':';
+            }
+
+            /// <summary>La primera casilla de aire sobre el suelo más bajo de una columna (o -1).</summary>
+            public int FloorBelowTop(int x)
+            {
+                for (int y = 1; y < Height; y++)
+                    if (At(x, y - 1) == '#' && At(x, y) != '#') return y;
+                return -1;
+            }
+
+            /// <summary>Tramos horizontales de un carácter: (inicio, longitud, fila).</summary>
+            public IEnumerable<(int start, int length, int y)> Runs(char ch)
+            {
+                for (int y = 0; y < Height; y++)
+                {
+                    int x = 0;
+                    while (x < Width)
+                    {
+                        if (At(x, y) != ch) { x++; continue; }
+                        int start = x;
+                        while (x < Width && At(x, y) == ch) x++;
+                        yield return (start, x - start, y);
+                    }
+                }
+            }
+
+            /// <summary>Tramos verticales de un carácter: (columna, inicio, longitud).</summary>
+            public IEnumerable<(int x, int start, int length)> VerticalRuns(char ch)
+            {
+                for (int x = 0; x < Width; x++)
+                {
+                    int y = 0;
+                    while (y < Height)
+                    {
+                        if (At(x, y) != ch) { y++; continue; }
+                        int start = y;
+                        while (y < Height && At(x, y) == ch) y++;
+                        yield return (x, start, y - start);
+                    }
+                }
+            }
 
             public static LevelData Load(string path)
             {
@@ -938,7 +1321,16 @@ namespace Abismo.EditorTools
                     }
                     if (definitions)
                     {
-                        if (line.Length >= 2 && line[1] == ':') data.texts[line[0]] = line.Substring(2).Trim().Replace("\\n", "\n");
+                        if (line.StartsWith("zonas:"))
+                        {
+                            data.ZoneStarts = line.Substring(6).Split(new[] { ' ', ',', '\t' }, System.StringSplitOptions.RemoveEmptyEntries)
+                                .Select(v => int.TryParse(v, out int n) ? n : 0).OrderBy(n => n).ToList();
+                            if (data.ZoneStarts.Count == 0) data.ZoneStarts.Add(0);
+                        }
+                        else if (line.Length >= 2 && line[1] == ':')
+                        {
+                            data.texts[line[0]] = line.Substring(2).Trim().Replace("\\n", "\n");
+                        }
                         continue;
                     }
                     if (rows.Count == 0 && line.Trim().Length == 0) continue;
