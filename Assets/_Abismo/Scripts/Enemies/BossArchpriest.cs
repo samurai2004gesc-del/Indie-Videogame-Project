@@ -37,6 +37,7 @@ namespace Abismo
             ChangePhase(Phase.Intro);
             Sfx.Play(SfxId.Roar);
             GameFeel.Shake(0.6f);
+            CameraFX.Warp(-0.35f);
         }
 
         void ChangePhase(Phase next)
@@ -46,38 +47,52 @@ namespace Abismo
             if (flash != null) flash.ClearHold();
         }
 
+        protected override bool CanFlinch => false;
+
+        static string AnimationFor(Phase phase, bool walking)
+        {
+            switch (phase)
+            {
+                case Phase.Intro: return "intro";
+                case Phase.Idle: return walking ? "walk" : "idle";
+                case Phase.Tentacles: return "tentacles";
+                case Phase.OrbsWindup: return "orbs";
+                case Phase.ChargeWindup: return "charge_windup";
+                case Phase.Charging: return "charge";
+                case Phase.Recover: return "recover";
+                case Phase.PhaseShift: return "phase";
+                default: return "idle";
+            }
+        }
+
         protected override void Tick(float dt)
         {
             timer += dt;
-            bob = 0f;
+            bool walkingNow = false;
 
             switch (phase)
             {
                 case Phase.Dormant:
                     SetHorizontalVelocity(0f);
                     FacePlayer();
-                    bob = Mathf.Sin(Time.time * 1.5f) * 0.03f;
                     break;
 
                 case Phase.Intro:
                     SetHorizontalVelocity(0f);
-                    lean = Mathf.Sin(timer * 20f) * 3f - 6f;
                     if (timer >= 1.8f) ChangePhase(Phase.Idle);
                     break;
 
                 case Phase.Idle:
                     FacePlayer();
-                    lean = 0f;
                     float dx = Mathf.Abs(player.transform.position.x - transform.position.x);
                     bool walking = dx > 3.5f && !IsWallAhead();
                     SetHorizontalVelocity(walking ? facing * walkSpeed : 0f);
-                    if (walking) bob = Mathf.Abs(Mathf.Sin(Time.time * 5f)) * 0.06f;
+                    walkingNow = walking;
                     if (timer >= 1.1f * Pace) ChooseAttack();
                     break;
 
                 case Phase.Tentacles:
                     SetHorizontalVelocity(0f);
-                    lean = -8f;
                     if (tentaclesLeft > 0 && timer >= nextTentacleAt)
                     {
                         SpawnTentacle(player.transform.position.x);
@@ -95,7 +110,6 @@ namespace Abismo
                     SetHorizontalVelocity(0f);
                     FacePlayer();
                     float charge = Mathf.Clamp01(timer / (0.9f * Pace));
-                    lean = -10f * charge;
                     if (flash != null) flash.Hold(new Color(0.85f, 0.4f, 1f), charge * 0.6f);
                     if (timer >= 0.9f * Pace)
                     {
@@ -107,7 +121,6 @@ namespace Abismo
 
                 case Phase.ChargeWindup:
                     SetHorizontalVelocity(0f);
-                    lean = -15f * Mathf.Clamp01(timer / 0.85f);
                     // ROJO = imparable (como en Blasphemous): no se puede parar.
                     if (flash != null) flash.Hold(new Color(1f, 0.1f, 0.1f), 0.3f + 0.4f * Mathf.PingPong(timer * 8f, 1f));
                     if (timer >= 0.85f * Pace)
@@ -119,8 +132,6 @@ namespace Abismo
                     break;
 
                 case Phase.Charging:
-                    lean = 18f;
-                    bob = Mathf.Abs(Mathf.Sin(Time.time * 18f)) * 0.08f;
                     SetHorizontalVelocity(facing * chargeSpeed);
                     if (!chargeHit)
                     {
@@ -139,17 +150,16 @@ namespace Abismo
 
                 case Phase.Recover:
                     SetHorizontalVelocity(0f);
-                    lean = Mathf.Lerp(lean, 0f, 5f * dt);
                     if (timer >= recoverTime * Pace) ChangePhase(Phase.Idle);
                     break;
 
                 case Phase.PhaseShift:
                     SetHorizontalVelocity(0f);
-                    lean = Mathf.Sin(timer * 25f) * 4f;
                     if (flash != null) flash.Hold(new Color(0.4f, 1f, 0.7f), 0.3f + 0.3f * Mathf.PingPong(timer * 4f, 1f));
                     if (timer >= 1.6f) ChangePhase(Phase.Idle);
                     break;
             }
+            Animate(AnimationFor(phase, walkingNow));
         }
 
         void ChooseAttack()
@@ -201,7 +211,6 @@ namespace Abismo
                 var orb = Instantiate(orbPrefab, origin, Quaternion.identity);
                 orb.Launch(new Vector2(Mathf.Cos(angle), Mathf.Sin(angle)), false);
             }
-            squash = new Vector2(0.9f, 1.1f);
             Sfx.Play(SfxId.Spell);
         }
 
@@ -213,6 +222,8 @@ namespace Abismo
                 ChangePhase(Phase.PhaseShift);
                 Sfx.Play(SfxId.Roar);
                 GameFeel.Shake(0.7f);
+                CameraFX.Warp(-0.45f);
+                CameraFX.Chromatic(0.8f);
                 if (HUD.Instance != null) HUD.Instance.ShowMessage("La marea se embravece...");
             }
         }

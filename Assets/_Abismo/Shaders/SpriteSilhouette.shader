@@ -1,13 +1,11 @@
-// Sprite normal que además puede "destellar" de un color (blanco al recibir un golpe, etc.).
-// Lo controla el script FlashEffect con las propiedades _FlashColor y _FlashAmount.
-Shader "Abismo/SpriteFlash"
+// Silueta de un sprite rellena de un color (el de SpriteRenderer.color, con su alfa como intensidad).
+// La usa FlashEffect para los destellos de golpe y los avisos de ataque. No recibe luces 2D:
+// URP la dibuja en su pasada "SRPDefaultUnlit", así que el destello se ve igual en la oscuridad.
+Shader "Abismo/SpriteSilhouette"
 {
     Properties
     {
         [PerRendererData] _MainTex ("Sprite Texture", 2D) = "white" {}
-        _Color ("Tint", Color) = (1,1,1,1)
-        _FlashColor ("Flash Color", Color) = (1,1,1,1)
-        _FlashAmount ("Flash Amount", Range(0,1)) = 0
     }
 
     SubShader
@@ -24,7 +22,7 @@ Shader "Abismo/SpriteFlash"
         Cull Off
         Lighting Off
         ZWrite Off
-        Blend One OneMinusSrcAlpha
+        Blend SrcAlpha OneMinusSrcAlpha
 
         Pass
         {
@@ -48,25 +46,20 @@ Shader "Abismo/SpriteFlash"
             };
 
             sampler2D _MainTex;
-            fixed4 _Color;
-            fixed4 _FlashColor;
-            float _FlashAmount;
 
             v2f vert(appdata_t IN)
             {
                 v2f OUT;
                 OUT.vertex = UnityObjectToClipPos(IN.vertex);
                 OUT.texcoord = IN.texcoord;
-                OUT.color = IN.color * _Color;
+                OUT.color = IN.color;
                 return OUT;
             }
 
             fixed4 frag(v2f IN) : SV_Target
             {
-                fixed4 c = tex2D(_MainTex, IN.texcoord) * IN.color;
-                c.rgb = lerp(c.rgb, _FlashColor.rgb, _FlashAmount);
-                c.rgb *= c.a;
-                return c;
+                fixed a = tex2D(_MainTex, IN.texcoord).a;
+                return fixed4(IN.color.rgb, a * IN.color.a);
             }
             ENDCG
         }

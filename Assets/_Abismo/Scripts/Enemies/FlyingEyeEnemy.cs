@@ -35,6 +35,9 @@ namespace Abismo
             home = transform.position;
         }
 
+        protected override string IdleAnimation => "fly";
+        protected override bool CanFlinch => ai != AI.Windup && ai != AI.Dive;
+
         void ChangeState(AI next)
         {
             ai = next;
@@ -49,8 +52,7 @@ namespace Abismo
             Vector2 pos = transform.position;
             float distance = Vector2.Distance(pos, player.Center);
             FacePlayer();
-            lean = 0f;
-            bob = Mathf.Sin(Time.time * 3f) * 0.12f;
+            Animate(ai == AI.Windup ? "windup" : ai == AI.Dive ? "dive" : "fly");
 
             if (ai != AI.Idle && Vector2.Distance(pos, home) > leashRange) ChangeState(AI.Idle);
 
@@ -71,12 +73,10 @@ namespace Abismo
                 case AI.Windup:
                     SetVelocity(Vector2.zero);
                     float charge = Mathf.Clamp01(aiTimer / windupTime);
-                    bob = Random.Range(-0.05f, 0.05f) * charge;
                     if (flash != null) flash.Hold(new Color(1f, 0.2f, 0.2f), charge * 0.6f);
                     if (aiTimer >= windupTime)
                     {
                         diveDirection = (player.Center - pos).normalized;
-                        squash = new Vector2(0.8f, 1.2f);
                         Sfx.Play(SfxId.EnemySwing);
                         ChangeState(AI.Dive);
                     }

@@ -1,4 +1,5 @@
-// Sprite que SUMA luz a lo que hay detrás: brillos, tajos, hechizos, motas.
+// Sprite que SUMA luz a lo que hay detrás: brillos, llamas, hechizos, motas.
+// En URP 2D se dibuja en la pasada "SRPDefaultUnlit" (no recibe luces: brilla solo y el bloom lo realza).
 Shader "Abismo/SpriteAdditive"
 {
     Properties

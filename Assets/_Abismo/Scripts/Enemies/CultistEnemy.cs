@@ -22,6 +22,8 @@ namespace Abismo
         AI ai = AI.Idle;
         float aiTimer, cooldownTimer = 1f;
 
+        protected override bool CanFlinch => ai != AI.Windup;
+
         void ChangeState(AI next)
         {
             ai = next;
@@ -35,15 +37,14 @@ namespace Abismo
             cooldownTimer -= dt;
             Vector2 toPlayer = ToPlayer();
             bool canSee = Mathf.Abs(toPlayer.x) < castRange && Mathf.Abs(toPlayer.y) < 5f;
-            bob = Mathf.Sin(Time.time * 2f) * 0.04f;
 
             switch (ai)
             {
                 case AI.Idle:
-                    lean = 0f;
                     if (!canSee)
                     {
                         SetHorizontalVelocity(0f);
+                        Animate("idle");
                         break;
                     }
                     FacePlayer();
@@ -51,11 +52,12 @@ namespace Abismo
                     if (tooClose && IsGroundAhead(-facing))
                     {
                         SetHorizontalVelocity(-facing * retreatSpeed);
-                        lean = -6f;
+                        Animate("walk");
                     }
                     else
                     {
                         SetHorizontalVelocity(0f);
+                        Animate("idle");
                     }
                     if (cooldownTimer <= 0f)
                     {
@@ -68,8 +70,7 @@ namespace Abismo
                     SetHorizontalVelocity(0f);
                     FacePlayer();
                     float charge = Mathf.Clamp01(aiTimer / windupTime);
-                    lean = -8f * charge;
-                    bob = Mathf.Sin(Time.time * 40f) * 0.02f * charge;
+                    Animate("windup");
                     if (flash != null) flash.Hold(new Color(0.85f, 0.4f, 1f), charge * 0.55f);
                     if (aiTimer >= windupTime)
                     {
@@ -80,7 +81,7 @@ namespace Abismo
 
                 case AI.Recover:
                     SetHorizontalVelocity(0f);
-                    lean = Mathf.Lerp(lean, 0f, 6f * dt);
+                    Animate("cast");
                     if (aiTimer >= 0.5f)
                     {
                         cooldownTimer = cooldown;
@@ -97,7 +98,6 @@ namespace Abismo
             Vector2 dir = player.Center - origin;
             var orb = Instantiate(projectilePrefab, origin, Quaternion.identity);
             orb.Launch(dir, false);
-            squash = new Vector2(0.85f, 1.15f);
             Sfx.Play(SfxId.Spell, 0.6f);
         }
 

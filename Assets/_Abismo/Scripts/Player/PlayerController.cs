@@ -5,8 +5,9 @@ namespace Abismo
 {
     /// <summary>
     /// El Ahogado: movimiento, salto, esquiva, combo de 3 golpes, parada (parry),
-    /// curación con láudano, conjuro, daño, muerte y una animación hecha por código
-    /// (estirar/aplastar, inclinarse y balancear el arma) para no depender de sprites animados.
+    /// curación con láudano, conjuro, daño y muerte. Cada estado reproduce su animación
+    /// fotograma a fotograma ("idle", "run", "attack1"...) y los golpes se activan exactamente
+    /// en los fotogramas de impacto (ver AttackData).
     ///
     /// Truco para principiantes: selecciona al Jugador en la escena y cambia los números
     /// del Inspector mientras juegas (en Play) para encontrar el "tacto" que te guste.
@@ -19,9 +20,7 @@ namespace Abismo
         [Header("Referencias (las asigna el constructor automático)")]
         public Transform visual;
         public SpriteRenderer bodyRenderer;
-        public Transform weaponPivot;
-        public SpriteRenderer weaponRenderer;
-        public SpriteRenderer slashRenderer;
+        public CharacterAnimator anim;
         public Projectile spellPrefab;
         public FlashEffect flash;
 
@@ -45,15 +44,34 @@ namespace Abismo
         [SerializeField] float dashCooldown = 0.45f;
         [SerializeField] bool allowAirDash = false;
 
-        [Header("Ataque")]
-        [SerializeField] int[] comboDamage = { 10, 12, 20 };
-        [SerializeField] float attackDuration = 0.3f;
-        [SerializeField] float finisherDuration = 0.42f;
-        [SerializeField] float attackActiveStart = 0.06f;
-        [SerializeField] float attackActiveEnd = 0.16f;
+        /// <summary>Un golpe: su animación, daño, cuándo hace daño (sincronizado con los fotogramas) y dónde.</summary>
+        [System.Serializable]
+        public class AttackData
+        {
+            public string animation = "attack1";
+            public int damage = 10;
+            [Tooltip("Duración total (segundos). Debe coincidir con la animación: fotogramas / fps.")]
+            public float duration = 0.3f;
+            [Tooltip("Ventana en la que la hoja hace daño (los fotogramas con estela).")]
+            public float activeStart = 0.1f;
+            public float activeEnd = 0.2f;
+            public Vector2 offset = new Vector2(1.35f, 1.05f);
+            public Vector2 size = new Vector2(2.5f, 1.5f);
+            public float knockback = 4f;
+            public float hitStop = 0.05f;
+            public float shake = 0.15f;
+        }
+
+        [Header("Ataque (combo de 3 + aéreo)")]
+        [SerializeField] AttackData[] combo =
+        {
+            new AttackData { animation = "attack1", damage = 10, duration = 0.30f, activeStart = 0.10f, activeEnd = 0.20f, offset = new Vector2(1.35f, 1.05f), size = new Vector2(2.5f, 1.5f), knockback = 4f, hitStop = 0.05f, shake = 0.15f },
+            new AttackData { animation = "attack2", damage = 12, duration = 0.30f, activeStart = 0.10f, activeEnd = 0.20f, offset = new Vector2(1.1f, 1.6f), size = new Vector2(2.2f, 2.4f), knockback = 4f, hitStop = 0.05f, shake = 0.15f },
+            new AttackData { animation = "attack3", damage = 20, duration = 0.40f, activeStart = 0.15f, activeEnd = 0.25f, offset = new Vector2(1.45f, 0.9f), size = new Vector2(2.9f, 1.9f), knockback = 7f, hitStop = 0.09f, shake = 0.32f },
+        };
+        [SerializeField] AttackData airAttack = new AttackData { animation = "airattack", damage = 10, duration = 0.30f, activeStart = 0.10f, activeEnd = 0.20f, offset = new Vector2(1.1f, 0.7f), size = new Vector2(2.4f, 2.2f), knockback = 4f, hitStop = 0.05f, shake = 0.15f };
+        [Tooltip("A partir de este momento del golpe, si ya pulsaste atacar, se encadena el siguiente.")]
         [SerializeField] float comboCancelTime = 0.2f;
-        [SerializeField] Vector2 attackOffset = new Vector2(1.0f, 1.0f);
-        [SerializeField] Vector2 attackSize = new Vector2(1.9f, 1.5f);
         [SerializeField] float attackBufferTime = 0.2f;
         [SerializeField] float revelationPerHit = 5f;
 
@@ -116,10 +134,10 @@ namespace Abismo
         Collider2D ignoredPlatform;
         float ignorePlatformUntil;
 
-        // Animación por código
-        Vector2 squash = Vector2.one;
-        float visualTime, weaponAngle = -70f, deathTime;
+        // Animación
+        float landAnimUntil;
         bool hiddenByHazard;
+        AttackData CurrentAttack => attackIsAir ? airAttack : combo[Mathf.Clamp(comboIndex, 0, combo.Length - 1)];
 
         bool Locked => GameManager.Instance != null && GameManager.Instance.InputLocked;
 
@@ -142,12 +160,11 @@ namespace Abismo
             groundFilter.useTriggers = false;
 
             lastSafePosition = transform.position;
-            if (slashRenderer != null) slashRenderer.enabled = false;
         }
 
         void Start()
         {
-            input = InputReader.Instance != null ? InputReader.Instance : FindFirstObjectByType<InputReader>();
+            input = InputReader.Instance != null ? InputReader.Instance : FindAnyObjectByType<InputReader>();
             if (input == null) input = gameObject.AddComponent<InputReader>();
         }
 
@@ -331,7 +348,7 @@ namespace Abismo
             lastGroundedTime = -10f;
             jumpCut = false;
             grounded = false;
-            squash = new Vector2(0.75f, 1.25f);
+            if (anim != null) anim.Play("jump", true);
             Sfx.Play(SfxId.Jump);
             Effects.Dust(transform.position, 4);
         }
@@ -339,9 +356,9 @@ namespace Abismo
         void OnLand()
         {
             float impact = Mathf.Clamp01(-previousVelocityY / maxFallSpeed);
-            squash = new Vector2(1f + 0.35f * impact, 1f - 0.3f * impact);
             if (impact > 0.3f)
             {
+                landAnimUntil = Time.time + 0.2f;
                 Effects.Dust(transform.position, 5);
                 Sfx.Play(SfxId.Land, impact);
             }
@@ -370,7 +387,6 @@ namespace Abismo
         {
             SetState(State.Dashing);
             lastDashTime = Time.time;
-            squash = new Vector2(1.3f, 0.7f);
             Sfx.Play(SfxId.Dash);
             Effects.Dust(transform.position, 6);
         }
@@ -382,29 +398,28 @@ namespace Abismo
             comboQueued = false;
             attackIsAir = !grounded;
             hitThisSwing.Clear();
+            if (anim != null) anim.Play(CurrentAttack.animation, true);
             Sfx.Play(index == 2 ? SfxId.HeavySwing : SfxId.Swing);
         }
 
         void UpdateAttack()
         {
-            bool finisher = comboIndex == 2;
-            float duration = finisher ? finisherDuration : attackDuration;
+            var attack = CurrentAttack;
 
-            if (Time.time - attackBufferedAt <= attackBufferTime && stateTimer > attackActiveStart * 0.5f)
+            if (Time.time - attackBufferedAt <= attackBufferTime && stateTimer > attack.activeStart * 0.5f)
             {
                 comboQueued = true;
                 attackBufferedAt = -10f;
             }
 
-            float activeEnd = attackActiveEnd + (finisher ? 0.04f : 0f);
-            if (stateTimer >= attackActiveStart && stateTimer <= activeEnd) DoAttackHit();
+            if (stateTimer >= attack.activeStart && stateTimer <= attack.activeEnd) DoAttackHit();
 
             if (comboQueued && !attackIsAir && comboIndex < 2 && stateTimer >= comboCancelTime)
             {
                 BeginSwing(comboIndex + 1);
                 return;
             }
-            if (stateTimer >= duration)
+            if (stateTimer >= attack.duration)
             {
                 if (comboQueued) BeginSwing(attackIsAir || comboIndex >= 2 ? 0 : comboIndex + 1);
                 else SetState(State.Normal);
@@ -413,29 +428,31 @@ namespace Abismo
 
         void DoAttackHit()
         {
-            bool finisher = comboIndex == 2;
+            var attack = CurrentAttack;
             Vector2 center = AttackCenter();
-            Vector2 size = finisher ? attackSize * 1.2f : attackSize;
-            Combat.OverlapBox(center, size, GameLayers.EnemyMask, overlapResults);
+            Combat.OverlapBox(center, attack.size, GameLayers.EnemyMask, overlapResults);
 
             foreach (var target in overlapResults)
             {
                 if (hitThisSwing.Contains(target)) continue;
                 hitThisSwing.Add(target);
 
-                int damage = comboDamage[Mathf.Clamp(comboIndex, 0, comboDamage.Length - 1)];
-                var result = target.TakeDamage(new DamageInfo(damage, transform.position, finisher ? 7f : 4f, false, gameObject));
+                var result = target.TakeDamage(new DamageInfo(attack.damage, transform.position, attack.knockback, false, gameObject));
                 if (result == DamageResult.Ignored) continue;
 
                 stats.AddRevelation(revelationPerHit);
-                GameFeel.HitStop(finisher ? 0.09f : 0.05f);
-                GameFeel.Shake(finisher ? 0.3f : 0.15f);
+                GameFeel.HitStop(attack.hitStop);
+                GameFeel.Shake(attack.shake);
                 Vector2 targetPos = target is Component c ? (Vector2)c.transform.position + Vector2.up * 0.9f : center;
                 Effects.HitSpark(Vector2.Lerp(center, targetPos, 0.5f));
             }
         }
 
-        Vector2 AttackCenter() => (Vector2)transform.position + new Vector2(attackOffset.x * facing, attackOffset.y);
+        Vector2 AttackCenter()
+        {
+            var attack = CurrentAttack;
+            return (Vector2)transform.position + new Vector2(attack.offset.x * facing, attack.offset.y);
+        }
 
         void UpdateParry()
         {
@@ -505,6 +522,7 @@ namespace Abismo
                     Sfx.Play(SfxId.Parry);
                     GameFeel.HitStop(0.15f);
                     GameFeel.Shake(0.35f);
+                    CameraFX.Chromatic(0.4f);
                     if (flash != null) flash.Flash(new Color(0.7f, 1f, 0.95f), 0.25f);
                     Effects.Burst(AttackCenter(), new Color(0.8f, 1f, 0.95f), 12, 10f, 0.25f, 0f, 0.9f, true);
                     return DamageResult.Parried;
@@ -516,6 +534,7 @@ namespace Abismo
             stats.Damage(info.Amount);
             GameFeel.HitStop(0.08f);
             GameFeel.Shake(0.45f);
+            CameraFX.Chromatic(0.6f);
             Sfx.Play(SfxId.Hurt);
             if (flash != null) flash.Flash(Color.white, 0.15f);
             if (HUD.Instance != null) HUD.Instance.FlashDamage();
@@ -544,6 +563,7 @@ namespace Abismo
             stats.Damage(instantKill ? stats.Health : damage);
             Sfx.Play(SfxId.Hurt);
             GameFeel.Shake(0.4f);
+            CameraFX.Chromatic(0.5f);
             if (HUD.Instance != null) HUD.Instance.FlashDamage();
 
             if (stats.Health <= 0)
@@ -567,7 +587,6 @@ namespace Abismo
         void Die(bool byHazard)
         {
             SetState(State.Dead);
-            deathTime = Time.time;
             Sfx.Play(SfxId.Death);
             GameFeel.Shake(0.6f);
             if (GameManager.Instance != null)
@@ -589,7 +608,6 @@ namespace Abismo
             hiddenByHazard = false;
             interactable = null;
             facing = 1;
-            squash = Vector2.one;
         }
 
         /// <summary>Lo llama el altar al rezar.</summary>
@@ -617,141 +635,57 @@ namespace Abismo
 
         bool IsNearHazard()
         {
-            var filter = new ContactFilter2D();
-            filter.NoFilter(); // incluye triggers: los pinchos y el agua lo son
+            var filter = ContactFilter2D.noFilter; // incluye triggers: los pinchos y el agua lo son
             int count = Physics2D.OverlapBox((Vector2)transform.position + Vector2.up * 0.8f, new Vector2(2.2f, 2.2f), 0f, filter, hazardBuffer);
             for (int i = 0; i < count; i++)
             {
-                if (hazardBuffer[i].GetComponent<Hazard>() != null) return true;
+                if (hazardBuffer[i].TryGetComponent<Hazard>(out _)) return true;
             }
             return false;
         }
 
         // ------------------------------------------------------------------
-        // Animación por código
+        // Animación: cada estado elige su animación fotograma a fotograma
         // ------------------------------------------------------------------
 
         void UpdateVisuals()
         {
-            if (visual == null) return;
-            float dt = Time.deltaTime;
-            visualTime += dt;
-            squash = Vector2.Lerp(squash, Vector2.one, 1f - Mathf.Exp(-12f * dt));
-
-            Vector2 scale = squash;
-            float lean = 0f;     // positivo = inclinarse hacia delante
-            float yOffset = 0f;
-            float targetWeapon = -70f;
-            bool showSlash = false;
-            Vector2 v = rb.linearVelocity;
-
-            switch (state)
-            {
-                case State.Normal:
-                    if (grounded && Mathf.Abs(v.x) > 0.5f)
-                    {
-                        float step = Mathf.Sin(visualTime * 14f);
-                        yOffset = Mathf.Abs(step) * 0.08f;
-                        lean = 6f;
-                        targetWeapon = -100f + step * 12f;
-                    }
-                    else if (grounded)
-                    {
-                        scale.y *= 1f + Mathf.Sin(visualTime * 2.5f) * 0.015f;
-                    }
-                    else
-                    {
-                        lean = Mathf.Clamp(v.y * -0.6f, -6f, 8f);
-                        targetWeapon = v.y > 0f ? -40f : -120f;
-                    }
-                    break;
-                case State.Dashing:
-                    scale = new Vector2(scale.x * 1.15f, scale.y * 0.75f);
-                    lean = 20f;
-                    targetWeapon = -170f;
-                    break;
-                case State.Attacking:
-                    lean = comboIndex == 2 ? 10f : 5f;
-                    weaponAngle = SwingAngle();
-                    targetWeapon = weaponAngle;
-                    showSlash = stateTimer >= attackActiveStart && stateTimer <= attackActiveEnd + 0.08f;
-                    break;
-                case State.Parrying:
-                    lean = parrySucceeded ? -8f : -4f;
-                    targetWeapon = 75f;
-                    break;
-                case State.Healing:
-                case State.Resting:
-                    scale = new Vector2(scale.x * 1.08f, scale.y * 0.82f);
-                    targetWeapon = -95f;
-                    break;
-                case State.Casting:
-                    lean = -6f;
-                    targetWeapon = 20f + Mathf.Sin(visualTime * 40f) * 4f;
-                    break;
-                case State.Hurt:
-                    lean = -12f;
-                    targetWeapon = -140f;
-                    break;
-                case State.Dead:
-                    lean = -Mathf.Min(90f, (Time.time - deathTime) * 300f);
-                    yOffset = 0f;
-                    targetWeapon = -160f;
-                    break;
-            }
-
-            weaponAngle = state == State.Attacking ? targetWeapon : Mathf.LerpAngle(weaponAngle, targetWeapon, 1f - Mathf.Exp(-18f * dt));
-
-            visual.localPosition = new Vector3(0f, yOffset, 0f);
-            visual.localScale = new Vector3(scale.x * facing, scale.y, 1f);
-            visual.localRotation = Quaternion.Euler(0f, 0f, -lean * facing);
-            if (weaponPivot != null) weaponPivot.localRotation = Quaternion.Euler(0f, 0f, weaponAngle);
-
-            if (slashRenderer != null)
-            {
-                slashRenderer.enabled = showSlash;
-                if (showSlash)
-                {
-                    float fade = Mathf.InverseLerp(attackActiveEnd + 0.08f, attackActiveStart, stateTimer);
-                    float size = comboIndex == 2 ? 1.25f : 1f;
-                    slashRenderer.transform.localPosition = new Vector3(attackOffset.x * 0.9f, attackOffset.y, 0f);
-                    slashRenderer.transform.localScale = new Vector3(size, comboIndex == 1 ? -size : size, 1f);
-                    var c = slashRenderer.color;
-                    slashRenderer.color = new Color(c.r, c.g, c.b, Mathf.Clamp01(fade * 1.5f));
-                }
-            }
+            if (visual != null) visual.localScale = new Vector3(facing, 1f, 1f);
+            if (anim != null) anim.Play(AnimationForState());
 
             // Parpadeo mientras eres invulnerable tras un golpe.
             bool blinkOff = state != State.Dead && Time.time < invulnerableUntil && Mathf.Repeat(Time.time, 0.12f) < 0.06f;
-            bool visible = !hiddenByHazard && !blinkOff;
-            if (bodyRenderer != null) bodyRenderer.enabled = visible;
-            if (weaponRenderer != null) weaponRenderer.enabled = visible;
+            if (bodyRenderer != null) bodyRenderer.enabled = !hiddenByHazard && !blinkOff;
         }
 
-        float SwingAngle()
+        string AnimationForState()
         {
-            // Ángulos mirando a la derecha: 0 = al frente, 90 = arriba, -90 = abajo.
-            float from, to;
-            if (attackIsAir) { from = 140f; to = -110f; }
-            else if (comboIndex == 0) { from = 120f; to = -60f; }
-            else if (comboIndex == 1) { from = -70f; to = 100f; }
-            else { from = 170f; to = -95f; }
-
-            if (stateTimer < attackActiveStart)
+            switch (state)
             {
-                return Mathf.Lerp(from - 15f * Mathf.Sign(to - from), from, stateTimer / attackActiveStart);
+                case State.Dashing: return "dodge";
+                case State.Attacking: return CurrentAttack.animation;
+                case State.Parrying: return parrySucceeded ? "parry_success" : "parry";
+                case State.Healing: return "heal";
+                case State.Casting: return "cast";
+                case State.Hurt: return "hurt";
+                case State.Resting: return "pray";
+                case State.Dead: return "death";
             }
-            float t = Mathf.InverseLerp(attackActiveStart, attackActiveEnd, stateTimer);
-            float eased = 1f - Mathf.Pow(1f - t, 3f);
-            return Mathf.Lerp(from, to, eased);
+            if (!grounded) return rb.linearVelocity.y > 0.5f ? "jump" : "fall";
+            if (Mathf.Abs(rb.linearVelocity.x) > 0.6f) return "run";
+            return Time.time < landAnimUntil ? "land" : "idle";
         }
 
         void OnDrawGizmosSelected()
         {
             Gizmos.color = new Color(1f, 0.3f, 0.2f, 0.6f);
             int f = Application.isPlaying ? facing : 1;
-            Vector3 center = transform.position + new Vector3(attackOffset.x * f, attackOffset.y, 0f);
-            Gizmos.DrawWireCube(center, attackSize);
+            if (combo == null) return;
+            foreach (var attack in combo)
+            {
+                Vector3 center = transform.position + new Vector3(attack.offset.x * f, attack.offset.y, 0f);
+                Gizmos.DrawWireCube(center, attack.size);
+            }
         }
     }
 }

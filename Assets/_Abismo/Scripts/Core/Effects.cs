@@ -16,21 +16,23 @@ namespace Abismo
             {
                 if (square == null)
                 {
-                    var tex = new Texture2D(2, 2) { filterMode = FilterMode.Point };
+                    var tex = new Texture2D(2, 2, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
                     tex.SetPixels(new[] { Color.white, Color.white, Color.white, Color.white });
                     tex.Apply();
-                    square = Sprite.Create(tex, new Rect(0, 0, 2, 2), new Vector2(0.5f, 0.5f), 16f);
+                    square = Sprite.Create(tex, new Rect(0, 0, 2, 2), new Vector2(0.5f, 0.5f), GameLayers.PixelsPerUnit);
                 }
                 return square;
             }
         }
 
         static Material Additive => GameManager.Instance != null ? GameManager.Instance.additiveMaterial : null;
+        static Material Unlit => GameManager.Instance != null ? GameManager.Instance.unlitMaterial : null;
 
         public static void Burst(Vector2 position, Color color, int count, float speed, float lifetime,
                                  float gravity, float size, bool additive, Vector2 bias = default)
         {
-            Material additiveMat = additive ? Additive : null;
+            // Las partículas no se iluminan con las luces 2D: brillan por sí mismas (y el bloom las realza).
+            Material material = additive ? Additive : Unlit;
             for (int i = 0; i < count; i++)
             {
                 var go = new GameObject("Particula");
@@ -42,7 +44,7 @@ namespace Abismo
                 sr.sprite = Square;
                 sr.color = color;
                 sr.sortingOrder = 40;
-                if (additiveMat != null) sr.sharedMaterial = additiveMat;
+                if (material != null) sr.sharedMaterial = material;
 
                 Vector2 dir = (Random.insideUnitCircle.normalized + bias).normalized;
                 go.AddComponent<SimpleParticle>().Init(dir * speed * Random.Range(0.4f, 1f),

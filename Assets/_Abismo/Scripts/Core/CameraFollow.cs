@@ -3,8 +3,11 @@ using UnityEngine;
 namespace Abismo
 {
     /// <summary>
-    /// Cámara que sigue al jugador con suavizado, mira un poco hacia donde camina,
-    /// no se sale de los límites del nivel y tiembla con los golpes.
+    /// Cámara que sigue al jugador con suavizado, mira un poco hacia donde camina, no se sale de los
+    /// límites del nivel y tiembla con los golpes. Pensada para pixel art: el temblor es solo de
+    /// desplazamiento (sin rotación) y la posición final se ajusta a la rejilla de píxeles para que
+    /// los sprites no "tiemblen" entre píxeles. Funciona junto al componente Pixel Perfect Camera de URP,
+    /// que es quien decide el tamaño de la cámara (por eso leemos orthographicSize cada frame).
     /// </summary>
     [RequireComponent(typeof(Camera))]
     public class CameraFollow : MonoBehaviour
@@ -14,19 +17,20 @@ namespace Abismo
         public Transform target;
 
         [Header("Seguimiento")]
-        [SerializeField] Vector2 offset = new Vector2(0f, 1.6f);
-        [SerializeField] float lookAhead = 1.8f;
-        [SerializeField] float smoothTimeX = 0.18f;
-        [SerializeField] float smoothTimeY = 0.3f;
+        [SerializeField] Vector2 offset = new Vector2(0f, 1.3f);
+        [SerializeField] float lookAhead = 1.6f;
+        [SerializeField] float smoothTimeX = 0.16f;
+        [SerializeField] float smoothTimeY = 0.28f;
 
         [Header("Límites del nivel")]
         [SerializeField] bool useBounds = true;
         [SerializeField] Rect bounds = new Rect(0f, 0f, 100f, 40f);
 
         [Header("Temblor")]
-        [SerializeField] float maxShakeOffset = 0.45f;
-        [SerializeField] float maxShakeAngle = 1.2f;
-        [SerializeField] float traumaDecay = 1.6f;
+        [SerializeField] float maxShakeOffset = 0.35f;
+        [SerializeField] float traumaDecay = 1.8f;
+        [Tooltip("Ajusta la posición a píxeles enteros (recomendado para pixel art).")]
+        [SerializeField] bool snapToPixels = true;
 
         Camera cam;
         PlayerController player;
@@ -71,7 +75,7 @@ namespace Abismo
             lookAheadCurrent = (player != null ? player.Facing : 1) * lookAhead;
             basePosition = Clamp(DesiredPosition());
             velocityX = velocityY = 0f;
-            transform.position = basePosition;
+            transform.position = Snap(basePosition);
         }
 
         Vector3 DesiredPosition()
@@ -101,14 +105,20 @@ namespace Abismo
             // El temblor usa tiempo real para que se note incluso durante el hit-stop.
             trauma = Mathf.Max(0f, trauma - traumaDecay * Time.unscaledDeltaTime);
             float shake = trauma * trauma;
-            float t = Time.unscaledTime * 25f;
+            float t = Time.unscaledTime * 28f;
             Vector3 shakeOffset = new Vector3(
                 Mathf.PerlinNoise(seed, t) * 2f - 1f,
                 Mathf.PerlinNoise(seed + 1f, t) * 2f - 1f,
                 0f) * (maxShakeOffset * shake);
 
-            transform.position = basePosition + shakeOffset;
-            transform.rotation = Quaternion.Euler(0f, 0f, (Mathf.PerlinNoise(seed + 2f, t) * 2f - 1f) * maxShakeAngle * shake);
+            transform.position = Snap(basePosition + shakeOffset);
+        }
+
+        Vector3 Snap(Vector3 p)
+        {
+            if (!snapToPixels) return p;
+            float ppu = GameLayers.PixelsPerUnit;
+            return new Vector3(Mathf.Round(p.x * ppu) / ppu, Mathf.Round(p.y * ppu) / ppu, p.z);
         }
 
         Vector3 Clamp(Vector3 p)

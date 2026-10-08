@@ -27,6 +27,8 @@ namespace Abismo
         float aiTimer, lostTimer;
         bool hasHit;
 
+        protected override bool CanFlinch => ai != AI.Windup && ai != AI.Attack;
+
         void ChangeState(AI next)
         {
             ai = next;
@@ -39,15 +41,13 @@ namespace Abismo
             aiTimer += dt;
             Vector2 toPlayer = ToPlayer();
             bool canSee = Mathf.Abs(toPlayer.x) < aggroRange && Mathf.Abs(toPlayer.y) < 2.5f;
-            bob = 0f;
 
             switch (ai)
             {
                 case AI.Patrol:
                     if (IsWallAhead() || !IsGroundAhead()) facing = -facing;
                     SetHorizontalVelocity(facing * patrolSpeed);
-                    bob = Mathf.Abs(Mathf.Sin(Time.time * 8f)) * 0.05f;
-                    lean = 4f;
+                    Animate("walk");
                     if (canSee) ChangeState(AI.Chase);
                     break;
 
@@ -68,26 +68,24 @@ namespace Abismo
                     }
                     bool canAdvance = IsGroundAhead() && !IsWallAhead();
                     SetHorizontalVelocity(canAdvance ? facing * chaseSpeed : 0f);
-                    bob = Mathf.Abs(Mathf.Sin(Time.time * 12f)) * 0.07f;
-                    lean = 10f;
+                    Animate(canAdvance ? "run" : "idle");
                     break;
 
                 case AI.Windup:
                     SetHorizontalVelocity(0f);
                     float charge = Mathf.Clamp01(aiTimer / windupTime);
-                    lean = -14f * charge;
+                    Animate("windup");
                     if (flash != null) flash.Hold(new Color(1f, 0.55f, 0.15f), charge * 0.6f);
                     if (aiTimer >= windupTime)
                     {
                         ChangeState(AI.Attack);
                         hasHit = false;
-                        squash = new Vector2(1.3f, 0.8f);
                         Sfx.Play(SfxId.EnemySwing);
                     }
                     break;
 
                 case AI.Attack:
-                    lean = 20f;
+                    Animate("attack");
                     SetHorizontalVelocity(IsGroundAhead() ? facing * lungeSpeed : 0f);
                     if (!hasHit)
                     {
@@ -100,7 +98,7 @@ namespace Abismo
 
                 case AI.Recover:
                     SetHorizontalVelocity(0f);
-                    lean = Mathf.Lerp(lean, 0f, 8f * dt);
+                    Animate("recover");
                     if (aiTimer >= recoverTime) ChangeState(AI.Chase);
                     break;
             }

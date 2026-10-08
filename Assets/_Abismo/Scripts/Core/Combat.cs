@@ -63,9 +63,8 @@ namespace Abismo
 
         static ContactFilter2D Filter(LayerMask mask)
         {
-            var filter = new ContactFilter2D();
+            var filter = ContactFilter2D.noFilter; // incluye triggers
             filter.SetLayerMask(mask);
-            filter.useTriggers = true;
             return filter;
         }
 

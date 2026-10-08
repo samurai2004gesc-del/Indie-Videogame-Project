@@ -19,6 +19,8 @@ namespace Abismo
         public HUD hud;
         public MindFragment mindFragmentPrefab;
         public Material additiveMaterial;
+        [Tooltip("Material de sprite SIN iluminación (partículas, brillos que no deben oscurecerse).")]
+        public Material unlitMaterial;
 
         [Header("Mundo")]
         [SerializeField] float killY = -4f;
@@ -60,12 +62,12 @@ namespace Abismo
 
         void Start()
         {
-            if (player == null) player = FindFirstObjectByType<PlayerController>();
-            if (cameraFollow == null) cameraFollow = FindFirstObjectByType<CameraFollow>();
-            if (hud == null) hud = FindFirstObjectByType<HUD>();
+            if (player == null) player = FindAnyObjectByType<PlayerController>();
+            if (cameraFollow == null) cameraFollow = FindAnyObjectByType<CameraFollow>();
+            if (hud == null) hud = FindAnyObjectByType<HUD>();
             if (player != null) checkpoint = player.transform.position;
 
-            foreach (var behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            foreach (var behaviour in FindObjectsByType<MonoBehaviour>(FindObjectsInactive.Include))
             {
                 if (behaviour is IResettable resettable) resettables.Add(resettable);
             }
@@ -210,8 +212,8 @@ namespace Abismo
                 if (resettable is Object unityObject && unityObject == null) continue;
                 resettable.ResetState();
             }
-            foreach (var projectile in FindObjectsByType<Projectile>(FindObjectsSortMode.None)) Destroy(projectile.gameObject);
-            foreach (var tentacle in FindObjectsByType<TentacleStrike>(FindObjectsSortMode.None)) Destroy(tentacle.gameObject);
+            foreach (var projectile in FindObjectsByType<Projectile>()) Destroy(projectile.gameObject);
+            foreach (var tentacle in FindObjectsByType<TentacleStrike>()) Destroy(tentacle.gameObject);
         }
     }
 }
