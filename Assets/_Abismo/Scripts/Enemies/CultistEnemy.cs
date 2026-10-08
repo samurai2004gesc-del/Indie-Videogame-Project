@@ -1,0 +1,112 @@
+using UnityEngine;
+
+namespace Abismo
+{
+    /// <summary>
+    /// Sectario de la Orden Esotérica: mantiene la distancia y lanza esferas de energía.
+    /// Las esferas se pueden PARAR para devolvérselas.
+    /// </summary>
+    public class CultistEnemy : Enemy
+    {
+        enum AI { Idle, Windup, Recover }
+
+        [Header("Sectario")]
+        public Projectile projectilePrefab;
+        [SerializeField] float castRange = 10f;
+        [SerializeField] float windupTime = 0.8f;
+        [SerializeField] float cooldown = 2.4f;
+        [SerializeField] float retreatDistance = 2.5f;
+        [SerializeField] float retreatSpeed = 2.2f;
+        [SerializeField] Vector2 castPoint = new Vector2(0.35f, 1.75f);
+
+        AI ai = AI.Idle;
+        float aiTimer, cooldownTimer = 1f;
+
+        void ChangeState(AI next)
+        {
+            ai = next;
+            aiTimer = 0f;
+            if (flash != null) flash.ClearHold();
+        }
+
+        protected override void Tick(float dt)
+        {
+            aiTimer += dt;
+            cooldownTimer -= dt;
+            Vector2 toPlayer = ToPlayer();
+            bool canSee = Mathf.Abs(toPlayer.x) < castRange && Mathf.Abs(toPlayer.y) < 5f;
+            bob = Mathf.Sin(Time.time * 2f) * 0.04f;
+
+            switch (ai)
+            {
+                case AI.Idle:
+                    lean = 0f;
+                    if (!canSee)
+                    {
+                        SetHorizontalVelocity(0f);
+                        break;
+                    }
+                    FacePlayer();
+                    bool tooClose = Mathf.Abs(toPlayer.x) < retreatDistance;
+                    if (tooClose && IsGroundAhead(-facing))
+                    {
+                        SetHorizontalVelocity(-facing * retreatSpeed);
+                        lean = -6f;
+                    }
+                    else
+                    {
+                        SetHorizontalVelocity(0f);
+                    }
+                    if (cooldownTimer <= 0f)
+                    {
+                        ChangeState(AI.Windup);
+                        Sfx.Play(SfxId.Chant, 0.7f);
+                    }
+                    break;
+
+                case AI.Windup:
+                    SetHorizontalVelocity(0f);
+                    FacePlayer();
+                    float charge = Mathf.Clamp01(aiTimer / windupTime);
+                    lean = -8f * charge;
+                    bob = Mathf.Sin(Time.time * 40f) * 0.02f * charge;
+                    if (flash != null) flash.Hold(new Color(0.85f, 0.4f, 1f), charge * 0.55f);
+                    if (aiTimer >= windupTime)
+                    {
+                        Fire();
+                        ChangeState(AI.Recover);
+                    }
+                    break;
+
+                case AI.Recover:
+                    SetHorizontalVelocity(0f);
+                    lean = Mathf.Lerp(lean, 0f, 6f * dt);
+                    if (aiTimer >= 0.5f)
+                    {
+                        cooldownTimer = cooldown;
+                        ChangeState(AI.Idle);
+                    }
+                    break;
+            }
+        }
+
+        void Fire()
+        {
+            if (projectilePrefab == null) return;
+            Vector2 origin = (Vector2)transform.position + new Vector2(castPoint.x * facing, castPoint.y);
+            Vector2 dir = player.Center - origin;
+            var orb = Instantiate(projectilePrefab, origin, Quaternion.identity);
+            orb.Launch(dir, false);
+            squash = new Vector2(0.85f, 1.15f);
+            Sfx.Play(SfxId.Spell, 0.6f);
+        }
+
+        protected override void OnStaggered() => ChangeState(AI.Recover);
+
+        protected override void OnReset()
+        {
+            cooldownTimer = 1f;
+            ChangeState(AI.Idle);
+        }
+    }
+}
