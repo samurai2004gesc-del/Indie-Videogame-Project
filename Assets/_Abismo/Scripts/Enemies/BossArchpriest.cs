@@ -20,7 +20,7 @@ namespace Abismo
         [SerializeField] float chargeMaxTime = 1.6f;
         [SerializeField] int chargeDamage = 25;
         [SerializeField] int tentacleDamage = 20;
-        [SerializeField] Vector2 orbOrigin = new Vector2(1.0f, 2.4f);
+        [SerializeField] Vector2 orbOrigin = new Vector2(2.2f, 3.8f); // la brasa del báculo al apuntar
 
         Phase phase = Phase.Dormant;
         float timer, recoverTime = 0.8f, nextTentacleAt;

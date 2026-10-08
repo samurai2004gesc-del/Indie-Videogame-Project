@@ -17,7 +17,7 @@ namespace Abismo
         [SerializeField] float cooldown = 2.4f;
         [SerializeField] float retreatDistance = 2.5f;
         [SerializeField] float retreatSpeed = 2.2f;
-        [SerializeField] Vector2 castPoint = new Vector2(0.35f, 1.75f);
+        [SerializeField] Vector2 castPoint = new Vector2(1.7f, 1.7f); // la punta del báculo al lanzar
 
         AI ai = AI.Idle;
         float aiTimer, cooldownTimer = 1f;
