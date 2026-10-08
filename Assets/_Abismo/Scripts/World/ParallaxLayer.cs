@@ -14,6 +14,9 @@ namespace Abismo
         [SerializeField] Vector2 autoScroll = Vector2.zero;
         [Tooltip("Ancho del sprite que se repite (para que el desplazamiento automático no se acabe nunca).")]
         [SerializeField] float wrapWidth = 0f;
+        [Tooltip("Posición de la cámara para la que se colocó la capa (la pone el constructor). Si no, la del primer fotograma.")]
+        [SerializeField] bool useReference;
+        [SerializeField] Vector2 referenceCamera;
 
         Transform cam;
         Vector3 startPosition, cameraStart;
@@ -26,12 +29,20 @@ namespace Abismo
             wrapWidth = repeatWidth;
         }
 
+        /// <summary>La capa se colocó pensando en la cámara en <paramref name="cameraPosition"/>.</summary>
+        public void SetReference(Vector2 cameraPosition)
+        {
+            useReference = true;
+            referenceCamera = cameraPosition;
+        }
+
         void Start()
         {
             var main = Camera.main;
             if (main != null) cam = main.transform;
             startPosition = transform.position;
-            if (cam != null) cameraStart = cam.position;
+            if (useReference) cameraStart = new Vector3(referenceCamera.x, referenceCamera.y, 0f);
+            else if (cam != null) cameraStart = cam.position;
         }
 
         void LateUpdate()
@@ -41,6 +52,7 @@ namespace Abismo
             if (wrapWidth > 0f) scroll.x = Mathf.Repeat(scroll.x, wrapWidth);
 
             Vector3 delta = cam.position - cameraStart;
+            delta.z = 0f;
             transform.position = new Vector3(
                 startPosition.x + delta.x * factor.x + scroll.x,
                 startPosition.y + delta.y * factor.y + scroll.y,
