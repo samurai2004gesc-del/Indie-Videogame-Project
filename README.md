@@ -11,6 +11,8 @@ Todo el arte —personajes animados fotograma a fotograma, escenarios, fondos e 
 
 ![Costa de Innsmouth](docs/img/costa_innsmouth.png)
 
+![Ruinas Ciclópeas](docs/img/ruinas.png)
+
 ![Santuario de las Mareas](docs/img/santuario.png)
 
 ![El Arcipreste de las Mareas](docs/img/arcipreste.png)
