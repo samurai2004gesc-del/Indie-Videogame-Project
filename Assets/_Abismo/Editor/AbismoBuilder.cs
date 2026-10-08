@@ -628,7 +628,7 @@ namespace Abismo.EditorTools
             if (runeGlow != null) AddSprite(Child("Runa", sprite, Vector2.zero), runeGlow, ctx.Mat.Emissive, OrderInteractables + 1);
             foreach (var anchor in ctx.Art.PropInfo["altar"].FlameAnchors) AddFlame(sprite, ctx, anchor / ArtBaker.PixelsPerUnit, false, OrderInteractables + 2);
             var glow = AddGlow(root, ctx, new Vector2(0f, 0.85f), 1.6f, new Color(0.45f, 1f, 0.8f, 0.12f), OrderInteractables - 1);
-            AddLight(root, new Vector2(0f, 1.2f), new Color(0.45f, 1f, 0.8f), 1.2f, 5f, 0.6f, true, 0.12f);
+            AddLight(root, new Vector2(0f, 1.7f), new Color(0.45f, 1f, 0.8f), 0.9f, 5f, 0.65f, true, 0.12f);
             var box = root.AddComponent<BoxCollider2D>();
             box.isTrigger = true;
             box.size = new Vector2(2.4f, 2.6f);
@@ -743,7 +743,7 @@ namespace Abismo.EditorTools
             PipelineSetup.AddPixelPerfect(cam, (int)ArtBaker.PixelsPerUnit, RefWidth, RefHeight);
             var follow = cameraObject.AddComponent<CameraFollow>();
             follow.Configure(player.transform, new Rect(0f, 0f, level.Width, level.Height));
-            Vector3 cameraStart = ClampCamera(player.transform.position + new Vector3(1.6f, 1.3f, 0f), level);
+            Vector3 cameraStart = ClampCamera(player.transform.position + new Vector3(1.6f, 2.3f, 0f), level);
             cameraStart.z = -10f;
             cameraObject.transform.position = cameraStart;
 
@@ -1030,6 +1030,8 @@ namespace Abismo.EditorTools
         {
             var level = ctx.Level;
             int lastFloorX = -10, lastCeilX = -10;
+            // Separación mínima entre objetos colgados del techo, según la zona.
+            int CeilingSpacing(Zone z) => z == Zone.Sanctuary ? 5 : 7;
             for (int x = 1; x < level.Width - 1; x++)
             {
                 var zone = level.ZoneAt(x);
@@ -1051,7 +1053,7 @@ namespace Abismo.EditorTools
                         }
                     }
                     // Techo: casilla libre con roca encima (cuelgan cosas).
-                    if (level.At(x, y + 1) == '#' && x - lastCeilX >= 4 && level.At(x, y - 1) != '#' && level.At(x, y - 2) != '#')
+                    if (level.At(x, y + 1) == '#' && x - lastCeilX >= CeilingSpacing(zone) && level.At(x, y - 1) != '#' && level.At(x, y - 2) != '#')
                     {
                         string prop = CeilingProp(zone, PixelCanvas.Hash(x, y, 777));
                         if (prop != null)
@@ -1099,28 +1101,28 @@ namespace Abismo.EditorTools
             switch (zone)
             {
                 case Zone.Coast:
-                    if (h < 0.05f) return "escombros_a";
-                    if (h < 0.075f) return "ancla";
-                    if (h < 0.1f) return "red";
-                    if (h < 0.12f) return "huesos";
-                    if (h < 0.14f) return "coral_a";
+                    if (h < 0.07f) return "escombros_a";
+                    if (h < 0.1f) return "ancla";
+                    if (h < 0.13f) return "red";
+                    if (h < 0.15f) return "huesos";
+                    if (h < 0.18f) return "coral_a";
                     return null;
                 case Zone.Ruins:
-                    if (h < 0.06f) return "escombros_b";
-                    if (h < 0.1f) return "escombros_c";
-                    if (h < 0.14f) return indoors ? "columna_rota" : "escombros_a";
-                    if (h < 0.17f) return "velas_suelo";
+                    if (h < 0.08f) return "escombros_b";
+                    if (h < 0.14f) return "escombros_c";
+                    if (h < 0.2f) return indoors ? "columna_rota" : "escombros_a";
+                    if (h < 0.25f) return "velas_suelo";
                     return null;
                 case Zone.Sanctuary:
-                    if (h < 0.08f) return "velas_suelo";
-                    if (h < 0.11f) return "escombros_a";
-                    if (h < 0.13f) return "columna_rota";
+                    if (h < 0.18f) return "velas_suelo";
+                    if (h < 0.24f) return "escombros_a";
+                    if (h < 0.28f) return "columna_rota";
                     return null;
                 default:
-                    if (h < 0.07f) return "coral_a";
-                    if (h < 0.13f) return "coral_b";
-                    if (h < 0.16f) return "huesos";
-                    if (h < 0.18f) return "escombros_b";
+                    if (h < 0.12f) return "coral_a";
+                    if (h < 0.22f) return "coral_b";
+                    if (h < 0.26f) return "huesos";
+                    if (h < 0.29f) return "escombros_b";
                     return null;
             }
         }
@@ -1129,8 +1131,8 @@ namespace Abismo.EditorTools
         {
             switch (zone)
             {
-                case Zone.Ruins: return h < 0.1f ? "cadenas" : h < 0.13f ? "jaula" : null;
-                case Zone.Sanctuary: return h < 0.1f ? "estandarte" : h < 0.15f ? "cadenas" : h < 0.18f ? "jaula" : null;
+                case Zone.Ruins: return h < 0.35f ? "cadenas" : h < 0.55f ? "jaula" : null;
+                case Zone.Sanctuary: return h < 0.35f ? "estandarte" : h < 0.55f ? "cadenas" : h < 0.68f ? "jaula" : null;
                 default: return null;
             }
         }
@@ -1149,10 +1151,10 @@ namespace Abismo.EditorTools
 
             var lighting = new Dictionary<Zone, (Color color, float intensity)>
             {
-                { Zone.Coast, (new Color(0.62f, 0.8f, 0.82f), 0.78f) },
-                { Zone.Ruins, (new Color(0.55f, 0.75f, 0.68f), 0.62f) },
-                { Zone.Sanctuary, (new Color(0.9f, 0.76f, 0.62f), 0.66f) },
-                { Zone.Reef, (new Color(0.62f, 0.62f, 0.9f), 0.72f) },
+                { Zone.Coast, (new Color(0.62f, 0.8f, 0.82f), 0.85f) },
+                { Zone.Ruins, (new Color(0.58f, 0.78f, 0.7f), 0.8f) },
+                { Zone.Sanctuary, (new Color(0.95f, 0.8f, 0.64f), 0.86f) },
+                { Zone.Reef, (new Color(0.64f, 0.64f, 0.92f), 0.8f) },
             };
 
             var result = new List<ZoneAmbience.Zone>();

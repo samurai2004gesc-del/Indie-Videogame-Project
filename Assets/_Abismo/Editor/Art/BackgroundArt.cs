@@ -279,7 +279,7 @@ namespace Abismo.EditorTools
             Colossus(far, 560f, 64f);
             // Islotes bajos.
             Silhouette(far, x => 64f + Mathf.Max(0f, (Fbm1(x, 96, 41) - 0.62f) * 90f), C("0e1d1a"));
-            var farLayer = Layer("durmiente", far, 0.95f, 0.96f, -95, 0.2f);
+            var farLayer = Layer("durmiente", far, 0.95f, 0.96f, -95, 1.2f);
             farLayer.FillBelow = sea;
             layers.Add(farLayer);
 
@@ -287,7 +287,7 @@ namespace Abismo.EditorTools
             var town = new PixelCanvas(W, H);
             var townCol = C("0f1918");
             Town(town, townCol, C("27382f"), C("c98a3a"), C("5f4a2a"));
-            var townLayer = Layer("innsmouth", town, 0.82f, 0.9f, -85, -1.1f);
+            var townLayer = Layer("innsmouth", town, 0.82f, 0.9f, -85, 2.4f);
             townLayer.FillBelow = townCol;
             layers.Add(townLayer);
 
@@ -303,11 +303,11 @@ namespace Abismo.EditorTools
                 if (i % 3 == 0) Line(shore, new Vector2(x + 2, h - 6), new Vector2(x + 40, h - 20), 2f, shoreCol);
             }
             Rim(shore, shoreCol, C("1d2c28"), -1, 1);
-            var shoreLayer = Layer("orilla", shore, 0.62f, 0.8f, -70, -1.5f);
+            var shoreLayer = Layer("orilla", shore, 0.62f, 0.8f, -70, 2.2f);
             shoreLayer.FillBelow = shoreCol;
             layers.Add(shoreLayer);
 
-            var fog = Layer("niebla", Fog(C("6f9e8c"), 0.32f, 20, 170, 61), 0.5f, 0.75f, -60, -0.5f);
+            var fog = Layer("niebla", Fog(C("6f9e8c"), 0.32f, 20, 170, 61), 0.5f, 0.75f, -60, 3f);
             fog.Scroll = new Vector2(0.15f, 0f);
             layers.Add(fog);
             return layers;
@@ -506,7 +506,7 @@ namespace Abismo.EditorTools
             Silhouette(mono, x => 20f + Fbm1(x, 64, 131) * 24f, monoCol);
             Rim(mono, monoCol, C("254a3e"), -1, 1);
             Glyphs(mono, 22, 120, C("2a6e5a"), C("6cf7c8"), 141);
-            var l1 = Layer("monolitos", mono, 0.85f, 0.9f, -88, -0.8f);
+            var l1 = Layer("monolitos", mono, 0.85f, 0.9f, -88, 2.4f);
             l1.FillBelow = monoCol;
             layers.Add(l1);
 
@@ -524,11 +524,11 @@ namespace Abismo.EditorTools
                 Polygon(near, new List<Vector2> { new Vector2(x - 6, 120 + (int)(PixelCanvas.Hash(i, 1, 161) * 70f)), new Vector2(x + 28, 120 + (int)(PixelCanvas.Hash(i, 1, 161) * 70f)), new Vector2(x + 20, 140 + (int)(PixelCanvas.Hash(i, 1, 161) * 70f)), new Vector2(x + 4, 132 + (int)(PixelCanvas.Hash(i, 1, 161) * 70f)) }, nearCol);
             }
             Rim(near, nearCol, C("18302a"), -1, 1);
-            var l2 = Layer("escalinata", near, 0.68f, 0.82f, -72, -1.4f);
+            var l2 = Layer("escalinata", near, 0.68f, 0.82f, -72, 2.2f);
             l2.FillBelow = nearCol;
             layers.Add(l2);
 
-            var fog = Layer("niebla", Fog(C("3f8a6a"), 0.26f, 10, 200, 171), 0.55f, 0.78f, -60, -0.5f);
+            var fog = Layer("niebla", Fog(C("3f8a6a"), 0.26f, 10, 200, 171), 0.55f, 0.78f, -60, 3f);
             fog.Scroll = new Vector2(0.08f, 0f);
             layers.Add(fog);
             return layers;
@@ -614,7 +614,7 @@ namespace Abismo.EditorTools
             Silhouette(cols, x => 16f, colC);
             Rim(cols, colC, C("54402a"), -1, 0);
             Rim(cols, colC, C("2a2016"), 0, 1);
-            var l1 = Layer("columnas", cols, 0.84f, 0.9f, -86, -0.6f);
+            var l1 = Layer("columnas", cols, 0.84f, 0.9f, -86, 2.4f);
             l1.FillBelow = colC;
             l1.FillAbove = colC;
             layers.Add(l1);
@@ -645,10 +645,10 @@ namespace Abismo.EditorTools
                 // Borla dorada.
                 Rect(drapes, x0 + width / 2 - 1, H - len - 14, x0 + width / 2 + 1, H - len - 4, C("6e5020"));
             }
-            var l2 = Layer("cortinajes", drapes, 0.68f, 0.84f, -70, -0.4f);
+            var l2 = Layer("cortinajes", drapes, 0.68f, 0.84f, -70, 1.5f);
             layers.Add(l2);
 
-            var dust = Layer("polvo", Fog(C("c9a066"), 0.14f, 30, 300, 191), 0.55f, 0.8f, -60, -0.5f);
+            var dust = Layer("polvo", Fog(C("c9a066"), 0.14f, 30, 300, 191), 0.55f, 0.8f, -60, 2f);
             dust.Scroll = new Vector2(0.05f, 0.02f);
             layers.Add(dust);
             return layers;
@@ -731,7 +731,7 @@ namespace Abismo.EditorTools
             }
             Rim(city, cityCol, C("2a2850"), -1, 1);
             Glyphs(city, 90, 60, C("2f8a70"), C("6cf7c8"), 251);
-            var l1 = Layer("rlyeh", city, 0.94f, 0.96f, -92, 0.3f);
+            var l1 = Layer("rlyeh", city, 0.94f, 0.96f, -92, 2.8f);
             l1.FillBelow = C("0b0a16");
             layers.Add(l1);
 
@@ -750,7 +750,7 @@ namespace Abismo.EditorTools
                     Put(waves, x, y, col);
                 }
             }
-            var l2 = Layer("oleaje", waves, 0.78f, 0.88f, -80, -0.8f);
+            var l2 = Layer("oleaje", waves, 0.78f, 0.88f, -80, 2.4f);
             l2.FillBelow = waveCol;
             layers.Add(l2);
 
@@ -769,11 +769,11 @@ namespace Abismo.EditorTools
                 int y = 26 + (int)(PixelCanvas.Hash(i, 2, 281) * 20f);
                 Disc(rocks, x, y, 1.5f + PixelCanvas.Hash(i, 3, 281) * 2f, C("8aa0b8"), 0.6f);
             }
-            var l3 = Layer("escollos", rocks, 0.6f, 0.78f, -66, -1.6f);
+            var l3 = Layer("escollos", rocks, 0.6f, 0.78f, -66, 2.2f);
             l3.FillBelow = rockCol;
             layers.Add(l3);
 
-            var mist = Layer("bruma", Fog(C("7a74a8"), 0.28f, 10, 160, 291), 0.5f, 0.75f, -60, -0.5f);
+            var mist = Layer("bruma", Fog(C("7a74a8"), 0.28f, 10, 160, 291), 0.5f, 0.75f, -60, 3f);
             mist.Scroll = new Vector2(0.3f, 0f);
             layers.Add(mist);
             return layers;

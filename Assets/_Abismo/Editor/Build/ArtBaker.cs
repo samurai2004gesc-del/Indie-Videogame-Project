@@ -50,15 +50,51 @@ namespace Abismo.EditorTools
         readonly List<Job> jobs = new List<Job>();
         readonly System.Action<string, float> progress;
 
-        public ArtBaker(System.Action<string, float> progress) => this.progress = progress;
+        public ArtBaker(System.Action<string, float> progress)
+        {
+            this.progress = progress;
+            protectedFiles = null; // volver a leer la lista en cada construcción
+            if (!File.Exists(ProtectedListPath))
+            {
+                Directory.CreateDirectory(ArtRoot);
+                File.WriteAllText(ProtectedListPath,
+                    "# PNG dibujados a mano que \"Construir\" NO debe sobrescribir: un nombre de archivo por línea.\n" +
+                    "# Ejemplo (quita la almohadilla):\n# ahogado.png\n");
+            }
+        }
 
         // ------------------------------------------------------------------
         // 1) Escribir PNG
         // ------------------------------------------------------------------
 
-        /// <summary>Escribe el PNG solo si cambió. Devuelve true si se escribió.</summary>
+        /// <summary>
+        /// PNG que el usuario ha dibujado a mano y no se deben regenerar: un nombre de archivo por línea
+        /// (por ejemplo "ahogado.png") en Assets/_Abismo/Art/Generated/NO_REGENERAR.txt.
+        /// </summary>
+        public const string ProtectedListPath = ArtRoot + "/NO_REGENERAR.txt";
+        static HashSet<string> protectedFiles;
+
+        static bool IsProtected(string path)
+        {
+            if (protectedFiles == null)
+            {
+                protectedFiles = new HashSet<string>(System.StringComparer.OrdinalIgnoreCase);
+                if (File.Exists(ProtectedListPath))
+                {
+                    foreach (var line in File.ReadAllLines(ProtectedListPath))
+                    {
+                        string name = line.Trim();
+                        if (name.Length > 0 && !name.StartsWith("#")) protectedFiles.Add(name);
+                    }
+                }
+            }
+            return File.Exists(path) && protectedFiles.Contains(Path.GetFileName(path));
+        }
+
+        /// <summary>Escribe el PNG solo si cambió (y si no está protegido). Devuelve true si se escribió.</summary>
         static bool WritePng(string path, PixelCanvas canvas)
         {
+            if (IsProtected(path)) return false;
             var texture = new Texture2D(canvas.Width, canvas.Height, TextureFormat.RGBA32, false);
             texture.SetPixels32(canvas.Pixels);
             texture.Apply();

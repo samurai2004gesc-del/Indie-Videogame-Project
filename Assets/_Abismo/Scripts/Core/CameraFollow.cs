@@ -17,7 +17,7 @@ namespace Abismo
         public Transform target;
 
         [Header("Seguimiento")]
-        [SerializeField] Vector2 offset = new Vector2(0f, 1.3f);
+        [SerializeField] Vector2 offset = new Vector2(0f, 2.3f);
         [SerializeField] float lookAhead = 1.6f;
         [SerializeField] float smoothTimeX = 0.16f;
         [SerializeField] float smoothTimeY = 0.28f;

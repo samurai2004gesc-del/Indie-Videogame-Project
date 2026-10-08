@@ -100,16 +100,41 @@ al dios... o si lo sella para siempre.
 
 ## 8. Dirección de arte y sonido
 
-- **Pixel art** a 16 píxeles por casilla; personajes de unos 32 píxeles de alto.
-- **Paleta:** verdes y turquesas enfermizos, piedra gris azulada, púrpuras de la carne corrompida,
-  latón y oro como únicos colores cálidos.
-- **Fondos:** varias capas con paralaje; siluetas colosales que se mueven muy despacio.
+Referencia principal: **Blasphemous** (The Game Kitchen). Lo que tomamos de su lenguaje visual:
+
+- **Pixel art detallado a baja resolución:** 640×360 píxeles de arte, 32 píxeles por casilla.
+  El jugador mide unos 60 píxeles; los jefes, casi tres veces más (el Arcipreste, ~165 px con la mitra).
+- **Siluetas legibles y un acento de color por personaje:** latón del Ahogado, brasa del Sectario,
+  iris rojo del Ojo, oro y verde del Signo en el Arcipreste. Negros nunca puros (sombras frías).
+- **Volumen pintado:** iluminación por bandas con paletas de matiz desplazado, contraluz, contornos
+  selectivos y sombras de contacto; cada sprite tiene además su *normal map* para las luces 2D.
+- **Animación expresiva a ~10–20 fps:** anticipación larga en los ataques enemigos (telegrafiados),
+  fotograma de impacto con estela (*smear*), continuación, movimiento secundario en capas, barbas y tentáculos.
+- **Arquitectura religiosa decadente:** columnas, arcos ojivales, estandartes carmesí, candelabros y
+  estatuas votivas (la **Madre de las Profundidades**, nuestro eco de la Piedad).
+- **Luz como narrativa:** zonas oscuras salpicadas de velas y altares; lo sagrado y lo prohibido brilla
+  (bloom) y guía al jugador.
+- **Paleta por zona:** costa verde enfermizo y luna pálida; ruinas verde abismal con runas;
+  santuario cálido (ámbar y carmesí) con vidrieras verdosas; arrecife violeta y tormentoso.
+- **Fondos:** 4–5 capas por zona con perspectiva atmosférica y paralaje; siluetas colosales lejanas
+  (el Durmiente tras Innsmouth, R'lyeh emergiendo) y siluetas oscuras en primer plano.
+- **Interfaz:** marcos góticos de metal y oro, medallón con el retrato, tipografía gótica pixelada
+  para los títulos (Jacquard 24) y una pixel sans legible para los textos (Jersey 10).
 - **Sonido:** zumbidos graves, mar lejano, coros disonantes en los altares y en los jefes.
+
+### Pipeline técnico
+
+- **Unity 6.6 + URP 2D** (el Built-in quedó obsoleto en Unity 6.5): luces 2D, normal maps, bloom,
+  viñeta, grano y aberración cromática reactiva (golpes, paradas, rugidos del jefe).
+- **Pixel Perfect Camera** a 640×360 con escalado entero.
+- Todo el arte se **genera por código** (`Assets/_Abismo/Editor/Art`) y el menú *Abismo* lo convierte
+  en hojas de sprites, AnimationClips y AnimatorControllers.
 
 ## 9. Hoja de ruta
 
 1. **Prototipo jugable** ✅ (este repositorio).
-2. **Vertical slice:** arte y animaciones definitivas de la Costa y el primer jefe, música, guardado.
+2. **Vertical slice:** arte y animaciones fotograma a fotograma, iluminación URP 2D y atmósfera ✅;
+   pendiente: música y guardado.
 3. **Primer bioma completo:** 3 zonas interconectadas, 6 enemigos, 2 jefes, amuletos y tienda.
 4. **Contenido:** resto de biomas, artefactos de exploración, finales.
 5. **Pulido y publicación** (itch.io / Steam).

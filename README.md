@@ -2,16 +2,21 @@
 
 Juego de acción en 2D al estilo **Blasphemous** (combate exigente, paradas, altares, jefes y
 una atmósfera opresiva) ambientado en el horror cósmico de **H. P. Lovecraft**.
-Está hecho con **Unity 6** y **C#**.
+Está hecho con **Unity 6.6**, el **Universal Render Pipeline (URP) 2D** y **C#**.
 
 ![Personajes](docs/img/personajes.png)
 
-*De izquierda a derecha: el Ahogado (jugador), un Profundo, un Sectario, un Ojo del Vacío y el jefe,
-el Arcipreste de las Mareas. Todo el arte es **provisional** y se genera por código: puedes cambiarlo por tus dibujos cuando quieras.*
+*El Ahogado (jugador), un Profundo, un Sectario de Dagón, un Ojo del Vacío y el jefe, el Arcipreste de las Mareas.
+Todo el arte —personajes animados fotograma a fotograma, escenarios, fondos e interfaz— se pinta por código.*
 
 ![Costa de Innsmouth](docs/img/costa_innsmouth.png)
 
-*Vista previa aproximada del comienzo del nivel (en Unity hay además paralaje, luna, niebla, brillos y HUD).*
+![Santuario de las Mareas](docs/img/santuario.png)
+
+![El Arcipreste de las Mareas](docs/img/arcipreste.png)
+
+*Vistas previas compuestas fuera de Unity con el mismo arte del juego y una aproximación de su iluminación
+(luces 2D, bloom, viñeta). En Unity además hay paralaje, niebla en movimiento, llamas animadas y partículas.*
 
 ---
 
@@ -19,7 +24,7 @@ el Arcipreste de las Mareas. Todo el arte es **provisional** y se genera por có
 
 | Blasphemous | Abismo | Estado |
 |---|---|---|
-| El Penitente | **El Ahogado**, un pescador de Innsmouth con una escafandra | ✅ |
+| El Penitente | **El Ahogado**, un pescador de Innsmouth con una escafandra de latón | ✅ |
 | Combo, esquiva, parada | Combo de 3 golpes, ataque aéreo, deslizamiento invulnerable y **parada** que aturde al enemigo | ✅ |
 | Frascos Biliares | **Láudano**: frascos que curan y se rellenan en los altares | ✅ |
 | Fervor y oraciones | **Revelación**: se gana golpeando y se gasta en el conjuro **Signo Arcano** | ✅ |
@@ -29,32 +34,36 @@ el Arcipreste de las Mareas. Todo el arte es **provisional** y se genera por có
 | Enemigos | Profundo (cuerpo a cuerpo), Sectario (a distancia), Ojo del Vacío (volador) | ✅ |
 | Jefes | **El Arcipreste de las Mareas**: tentáculos, abanico de esferas, embestida imparable y 2 fases | ✅ |
 | Ataques rojos imparables | Brillo **naranja** = se puede parar · Brillo **rojo** = hay que esquivar | ✅ |
-| Pinchos | Coral espinoso y agua abisal | ✅ |
-| Lore en el escenario | Inscripciones con tutoriales y textos lovecraftianos | ✅ |
-| Sensación de impacto | Congelación al golpear (hit-stop), temblor de cámara, destellos, partículas | ✅ |
+| Animación a mano | **Animación fotograma a fotograma** con anticipación, estelas (*smears*) y continuación, en Animator | ✅ |
+| Pixel art iluminado | **Luces 2D** de URP: velas, faroles y altares iluminan la piedra gracias a sus **normal maps** | ✅ |
+| Atmósfera | **Bloom**, viñeta, grano, niebla, rayos de luz, paralaje por zona y siluetas en primer plano | ✅ |
+| Cámara pixel-perfect | 640×360 píxeles de arte escalados sin deformarse (×2 en 720p, ×3 en 1080p, ×6 en 4K) | ✅ |
+| Interfaz gótica | Marcos de oro, medallón del personaje y fuentes pixel góticas | ✅ |
 | Sonido | Efectos y ambiente sintetizados por código (no hacen falta archivos de audio) | ✅ |
-| Interfaz | Vida, Revelación, frascos, oro, nombres de zona, barra del jefe, pausa, título y muerte | ✅ |
 
-Un nivel completo con 5 zonas: **Costa de Innsmouth → Ruinas Ciclópeas → Santuario de las Mareas
-(jefe) → Arrecife del Diablo**.
+Un nivel completo con 4 zonas y su propio ambiente: **Costa de Innsmouth → Ruinas Ciclópeas →
+Santuario de las Mareas (jefe) → Arrecife del Diablo**.
+
+![Nivel completo](docs/img/nivel_completo.png)
 
 ---
 
 ## Cómo abrirlo y jugar (paso a paso)
 
 1. **Instala Unity Hub** desde <https://unity.com/download> e inicia sesión con tu cuenta.
-2. En Unity Hub ve a **Installs → Install Editor** e instala **Unity 6 (LTS)**.
-   Para jugar en tu ordenador no necesitas módulos extra.
+2. En Unity Hub ve a **Installs → Install Editor** e instala **Unity 6.6** (6000.6.x, la versión más
+   reciente). Para jugar en tu ordenador no necesitas módulos extra.
 3. **Descarga este proyecto**: en GitHub pulsa el botón verde **Code → Download ZIP** y descomprímelo
    (o usa `git clone` si ya sabes usar git).
 4. En Unity Hub: **Projects → Add → Add project from disk** y elige la carpeta del proyecto
    (la que contiene `Assets`, `Packages` y `ProjectSettings`).
-5. Ábrelo. Si Unity Hub avisa de que la versión del editor es distinta, elige tu Unity 6 y acepta.
-   La primera vez tarda unos minutos.
+5. Ábrelo con Unity 6.6. La primera vez tarda unos minutos: Unity descarga los paquetes
+   (**Universal RP**, **Input System**, **2D Sprite**...). Si te propone actualizar alguna versión, acepta.
 6. Si aparece un aviso sobre el **nuevo Input System** ("enable the backends?"), pulsa **Yes**:
-   Unity se reiniciará. (Si pulsas *No* también funciona, con el sistema de entrada clásico).
+   Unity se reiniciará.
 7. En la barra de menús de arriba: **Abismo → Construir demo jugable**.
-   Esto crea los sprites, los prefabs y la escena `Assets/_Abismo/Scenes/Nivel_01`, y la abre.
+   La primera vez tarda uno o dos minutos: configura URP 2D, pinta todo el arte, crea las animaciones,
+   los prefabs y la escena `Assets/_Abismo/Scenes/Nivel_01`, y la abre.
 8. Pulsa el botón **▶ (Play)** de arriba del todo. ¡A jugar!
 
 ### Controles
@@ -74,22 +83,53 @@ Un nivel completo con 5 zonas: **Costa de Innsmouth → Ruinas Ciclópeas → Sa
 
 ---
 
+## Cómo se consigue el aspecto "Blasphemous"
+
+Unity 6.5 declaró obsoleto el render pipeline integrado (Built-in), así que el proyecto usa
+**URP con el Renderer 2D**, que es además el que permite luces 2D y normal maps en sprites.
+
+- **Pixel art con volumen.** Cada personaje se construye con piezas 2.5D (cápsulas, elipses, polígonos
+  biselados). Un pequeño motor (`Editor/Art/ShadedCanvas.cs`) las ilumina por **bandas** con paletas
+  de matiz desplazado (sombras frías azul-violeta, luces cálidas), pone **contornos selectivos**,
+  **sombras de contacto** y **contraluz** (*rim light*), y además calcula el **normal map** de cada fotograma.
+- **Animación con principios clásicos.** Poses clave con curvas de aceleración: el Ahogado anticipa el
+  golpe, deja una **estela** curva en el fotograma de impacto y continúa el movimiento; la capa y la
+  manguera se mueven con retraso. Los enemigos telegrafían sus ataques con varios fotogramas de aviso.
+- **Luz.** Una luz global por zona (verde enfermizo en la costa, ámbar en el santuario...) y luces
+  puntuales en velas, faroles, altares, el báculo del jefe y la mirilla de la escafandra. Lo que brilla
+  (ojos, brasas, runas, llamas) se dibuja aparte sin iluminar y alimenta el **bloom**.
+- **Escenario pintado**, no baldosas repetidas: losas irregulares, sillería que se funde en negro,
+  musgo, columnas y arcos ojivales al fondo (`TerrainPainter.cs`), estatuas, candelabros, estandartes,
+  jaulas, cadenas, corales... y fondos con **perspectiva atmosférica** (El Durmiente tras Innsmouth,
+  la catedral sumergida, R'lyeh emergiendo del mar).
+
+![Animaciones del Ahogado](docs/img/animaciones_ahogado.png)
+
+*Algunas animaciones del Ahogado: combo (golpes 1 y 3 con su estela), deslizamiento, láudano y parada.*
+
+---
+
 ## Cómo está organizado
 
 ```
 Assets/_Abismo/
 ├── Scripts/
-│   ├── Core/       GameManager (altares, muerte, pausa), cámara, entrada, combate, efectos, sonido
-│   ├── Player/     PlayerController (movimiento y combate), PlayerStats (vida, Revelación, láudano, oro)
+│   ├── Core/       GameManager, cámara, entrada, combate, efectos (post-procesado reactivo), sonido, animador
+│   ├── Player/     PlayerController (movimiento, combate y animaciones), PlayerStats
 │   ├── Enemies/    Enemy (base común), Profundo, Sectario, Ojo del Vacío, Arcipreste, proyectiles, tentáculos
-│   ├── World/      Altares, inscripciones, peligros, oro, fragmento de mente, arena del jefe, fondos
-│   └── UI/         HUD (toda la interfaz se crea por código)
-├── Shaders/        SpriteFlash (destellos al recibir golpes) y SpriteAdditive (brillos)
-├── Editor/         El menú "Abismo": genera arte, prefabs y la escena
+│   ├── World/      Altares, inscripciones, peligros, oro, paralaje, ambientación por zonas, llamas, brillos
+│   └── UI/         HUD (toda la interfaz se crea por código a 640×360)
+├── Shaders/        SpriteSilhouette (destellos), SpriteEmissive (partes que brillan), SpriteAdditive (luz)
+├── Fonts/          Jacquard 24 y Jersey 10 (fuentes pixel con licencia libre OFL)
+├── Editor/
+│   ├── Art/        El arte en código: personajes (Characters/), terreno, decorado, fondos e interfaz
+│   ├── Build/      Configuración de URP 2D e importación del arte (hojas de sprites, normal maps, animaciones)
+│   └── AbismoBuilder.cs   El menú "Abismo": monta prefabs y la escena
 └── Levels/         nivel_01.txt  ← el mapa del nivel, ¡en texto!
 ```
 
-Al pulsar **Construir** aparecen además `Art/` (PNG y tiles), `Materials/`, `Prefabs/` y `Scenes/`.
+Al pulsar **Construir** aparecen además `Art/Generated/` (PNG), `Animations/`, `Materials/`, `Prefabs/`,
+`Scenes/` y `Settings/` (el pipeline URP 2D y el perfil de post-procesado).
 
 ---
 
@@ -97,33 +137,36 @@ Al pulsar **Construir** aparecen además `Art/` (PNG y tiles), `Materials/`, `Pr
 
 **Ajustar el tacto del personaje.** Abre `Assets/_Abismo/Prefabs/Jugador` y en el Inspector cambia
 los valores de `PlayerController` (velocidad, altura de salto, daño del combo, ventana de parada...).
-Truco: puedes cambiarlos durante el Play para probar, pero esos cambios se pierden al parar; apúntalos
-y ponlos en el prefab. Igual con los enemigos (`Profundo`, `Sectario`, `OjoDelVacio`, `Arcipreste`).
+Construir respeta tus prefabs; `Abismo → Restablecer prefabs y construir` los vuelve a crear.
 
 **Diseñar niveles.** Abre `Assets/_Abismo/Levels/nivel_01.txt` con cualquier editor de texto. Cada
-carácter es una casilla (`#` roca, `=` plataforma, `^` coral espinoso, `D` Profundo, `A` altar...;
-la leyenda completa está al principio del fichero). Guarda y usa **Abismo → Construir demo jugable**.
-Construir rehace la **escena** desde el texto, pero **respeta tus prefabs y tus PNG**.
+carácter es una casilla de 32×32 píxeles (`#` roca, `=` plataforma, `^` coral espinoso, `D` Profundo,
+`A` altar, `S` estatua, `L` candelabro...; la leyenda completa está al principio del fichero). La línea
+`zonas:` del final dice en qué columna empieza cada zona. Guarda y usa **Abismo → Construir demo jugable**:
+el terreno se vuelve a pintar a partir del mapa y el decorado pequeño se coloca solo.
 
-**Cambiar el arte.** Sustituye los PNG de `Assets/_Abismo/Art/Generated` por tus dibujos con el mismo
-nombre. Escala: **16 píxeles = 1 casilla**. Los personajes tienen el punto de apoyo en los pies.
-Construir no sobrescribe los PNG que ya existen.
+**Cambiar la luz y la atmósfera.** En la escena, el objeto `Ambientacion` tiene el color e intensidad
+de la luz de cada zona; `Volumen Global` tiene el bloom, la viñeta y el grano; cada vela o altar tiene su
+`Light 2D`.
 
-**Volver a empezar.** `Abismo → Restablecer prefabs y construir` recrea los prefabs con los valores
-originales. `Abismo → Restablecer sprites provisionales y construir` vuelve al arte provisional.
+**Cambiar el arte.** Hay dos caminos:
+- *Por código:* edita las clases de `Editor/Art` (por ejemplo `Characters/AhogadoArt.cs` tiene las poses
+  y animaciones del Ahogado) y vuelve a construir.
+- *A mano:* dibuja encima de los PNG de `Assets/_Abismo/Art/Generated` (escala: **32 píxeles = 1 casilla**,
+  mismo tamaño y misma posición de los fotogramas) y añade el nombre del archivo a
+  `Art/Generated/NO_REGENERAR.txt` para que Construir no lo sobrescriba.
 
-**Crear un enemigo nuevo.** Crea una clase que herede de `Enemy` y escribe su comportamiento en
-`Tick(float dt)`. Mira `DeepOneEnemy.cs` como ejemplo: patrulla, persigue, anuncia el golpe y ataca.
+**Crear un enemigo nuevo.** Crea una clase que herede de `Enemy`, escribe su comportamiento en
+`Tick(float dt)` y elige su animación con `Animate("nombre")`. Mira `DeepOneEnemy.cs` como ejemplo.
 
 ---
 
 ## Próximos pasos sugeridos
 
-1. Animaciones de verdad (sprites por fotogramas + Animator) en lugar de la animación por código.
-2. Guardar la partida (altar activo, oro, jefes vencidos).
-3. Más movimientos: agarrarse a bordes, trepar, golpe hacia abajo.
-4. Equipo al estilo de los rosarios y reliquias: **amuletos** que se compran con oro de Innsmouth.
-5. Música, más zonas, un mapa y más jefes.
+1. Guardar la partida (altar activo, oro, jefes vencidos).
+2. Más movimientos: agarrarse a bordes, trepar, golpe hacia abajo, ejecuciones al enemigo aturdido.
+3. Equipo al estilo de los rosarios y reliquias: **amuletos** que se compran con oro de Innsmouth.
+4. Música, más zonas, un mapa y más jefes.
 
 Hay más ideas de historia, enemigos y mecánicas en el [documento de diseño](docs/GDD.md).
 
@@ -132,15 +175,18 @@ Hay más ideas de historia, enemigos y mecánicas en el [documento de diseño](d
 ## Si algo falla
 
 - **No aparece el menú "Abismo"**: hay errores en la ventana **Console** (Window → General → Console).
-  Normalmente es porque falta algún paquete: abre **Window → Package Manager** y comprueba que estén
-  instalados *Input System*, *Unity UI* y *2D Tilemap Editor*.
-- **El personaje atraviesa el suelo o no hay enemigos**: usa **Abismo → Construir demo jugable**, que
-  crea las capas `Ground`, `Player` y `Enemy` necesarias.
-- **Se ve todo rosa**: el proyecto usa el render pipeline integrado (Built-in). Si lo has convertido a
-  URP, vuelve a construir; si sigue rosa, cambia el material de los sprites por `Sprites-Default`.
+  Normalmente falta algún paquete: abre **Window → Package Manager** y comprueba que estén instalados
+  *Universal RP*, *Input System*, *Unity UI*, *2D Sprite* y *2D Tilemap Editor*.
+- **Se ve todo rosa o los sprites no reciben luz**: vuelve a usar **Abismo → Construir demo jugable**,
+  que asigna el pipeline `Assets/_Abismo/Settings/Abismo_URP2D` en *Project Settings → Graphics* y en
+  *Quality*.
+- **Todo se ve negro**: la escena necesita su `Luz Global 2D`; vuelve a construir.
+- **El personaje atraviesa el suelo o no hay enemigos**: construye de nuevo; crea las capas `Ground`,
+  `Player` y `Enemy` necesarias.
 - **Al pulsar Play no pasa nada**: comprueba que tienes abierta la escena `Assets/_Abismo/Scenes/Nivel_01`.
 
 ---
 
-*Los textos y el arte de este proyecto son originales. Los nombres del mito (Cthulhu, Dagón, R'lyeh,
-Innsmouth) proceden de la obra de H. P. Lovecraft.*
+*Los textos, el código y el arte de este proyecto son originales. Los nombres del mito (Cthulhu, Dagón,
+R'lyeh, Innsmouth) proceden de la obra de H. P. Lovecraft. Fuentes: **Jacquard 24** y **Jersey 10**,
+de The Soft Type Project, bajo la SIL Open Font License (ver `Assets/_Abismo/Fonts`).*

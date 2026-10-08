@@ -26,11 +26,17 @@ namespace Abismo
         {
             if (animator == null || animator.runtimeAnimatorController == null) return;
             if (!restart && animationName == currentName) return;
+            // El estado se busca por su nombre corto y, por si acaso, por su ruta completa en la capa base.
             int hash = Animator.StringToHash(animationName);
-            if (!animator.HasState(0, hash)) return;
+            int playHash = hash;
+            if (!animator.HasState(0, playHash))
+            {
+                playHash = Animator.StringToHash("Base Layer." + animationName);
+                if (!animator.HasState(0, playHash)) return;
+            }
             currentName = animationName;
             currentHash = hash;
-            animator.Play(hash, 0, 0f);
+            animator.Play(playHash, 0, 0f);
         }
 
         /// <summary>Progreso de la animación actual: 0 al empezar, 1 al terminar (sigue creciendo si es en bucle).</summary>
