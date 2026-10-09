@@ -748,6 +748,7 @@ namespace Abismo.EditorTools
             var gates = CreateGates(ctx);
             if (boss != null) CreateBossArena(boss, gates);
             Decorate(ctx, props, occupied);
+            WarnLowPassages(level);
 
             // Cámara pixel-perfect (640×360 píxeles de arte, escalados a la pantalla).
             var cameraObject = new GameObject("Main Camera") { tag = "MainCamera" };
@@ -1183,6 +1184,28 @@ namespace Abismo.EditorTools
                 if (level.At(x + dx, y - 1) != '#' || (c != '.' && c != ':') || level.At(x + dx, y + 1) == '#') return false;
             }
             return !NearOccupied(occupied, x, y, half + 1);
+        }
+
+        /// <summary>
+        /// Avisa en la consola de los pasos de una sola casilla de alto junto a un suelo: el jugador mide casi dos
+        /// casillas, así que ahí se queda atascado (ni deslizándose cabe).
+        /// </summary>
+        static void WarnLowPassages(LevelData level)
+        {
+            bool Solid(int x, int y) => level.At(x, y) == '#';
+            bool Stand(int x, int y) => !Solid(x, y) && !Solid(x, y + 1) && (level.At(x, y - 1) == '#' || level.At(x, y - 1) == '=');
+            var reported = new HashSet<Vector2Int>();
+            for (int y = 1; y < level.Height - 1; y++)
+                for (int x = 1; x < level.Width - 1; x++)
+                {
+                    if (!Stand(x, y)) continue;
+                    for (int d = -1; d <= 1; d += 2)
+                    {
+                        if (Solid(x + d, y) || !Solid(x + d, y + 1) || !reported.Add(new Vector2Int(x + d, y))) continue;
+                        Debug.LogWarning($"[Abismo] Paso demasiado bajo en la columna {x + d}, altura {y} del mapa (contando desde abajo): " +
+                                         "el jugador necesita 2 casillas de alto para pasar.");
+                    }
+                }
         }
 
         static bool NearOccupied(HashSet<Vector2Int> occupied, int x, int y, int radius)
