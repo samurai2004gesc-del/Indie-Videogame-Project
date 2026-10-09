@@ -45,11 +45,20 @@ al dios... o si lo sella para siempre.
 | Lágrimas de Expiación | Oro de Innsmouth | Joyería extraña de los Profundos |
 | Cuentas de rosario | Amuletos | Ranuras de equipo con efectos pasivos |
 | Reliquias | Artefactos | Habilidades de exploración (ver sección 6) |
+| Ejecuciones | Ejecuciones | Remate brutal a un enemigo aturdido |
+| *"Requiescat in Pace"* | *"Requiescat in Profundis"* | Estandarte al vencer a un jefe |
 
 ## 4. Mecánicas implementadas
 
 - **Movimiento:** carrera, salto variable, *coyote time* y *buffer* de salto, bajar de plataformas.
 - **Combate:** combo de 3 golpes (el tercero es más fuerte), ataque aéreo, hit-stop y temblor de cámara.
+  Cada golpe dispara efectos pintados: chispazo amarillo-naranja con media luna, sangre en racimos;
+  al recibir daño, una estrella blanca, destello de silueta y retroceso.
+- **Ejecuciones:** atacar (J) a un enemigo aturdido junto a él lo remata con una animación propia
+  (16 fotogramas): congelación larga, gran tajo, sangre, +25 de Revelación y la mitad más de oro.
+  Un aviso "[J] Ejecutar" flota sobre el enemigo. No se puede ejecutar a los jefes ni a los voladores.
+- **Escudos:** los golpes de frente contra un escudo rebotan (el jugador retrocede y pierde el combo).
+  Los conjuros los atraviesan.
 - **Esquiva:** deslizamiento con invulnerabilidad (solo en el suelo, como en Blasphemous).
 - **Parada:** ventana de 0,28 s; aturde al atacante 1,4 s y los golpes contra un aturdido hacen el doble.
   Las esferas enemigas paradas se devuelven con el doble de daño.
@@ -59,12 +68,15 @@ al dios... o si lo sella para siempre.
 - **Altares:** curan, rellenan el láudano, fijan la reaparición y reviven a los enemigos.
 - **Muerte:** reapareces en el último altar; queda un fragmento de mente donde caíste.
 - **Peligros:** coral espinoso y agua abisal (daño y vuelta al último suelo firme).
+- **Interfaz en el mundo:** aviso con la tecla flotando sobre altares, inscripciones y enemigos ejecutables;
+  estandarte "Requiescat in Profundis" con el Signo Antiguo al vencer al jefe.
 
 ## 5. Bestiario
 
 | Criatura | Comportamiento | Cómo vencerla |
 |---|---|---|
 | **Profundo** | Patrulla, persigue y lanza un zarpazo con estocada | Para el zarpazo y castiga |
+| **Guardián de la Concha** | Avanza tras un escudo de vieira gigante que para todo golpe frontal; se gira despacio; lanzada con arpón por encima del escudo | Rodéalo y golpéale la espalda, rómpele la guardia con 4 golpes seguidos o para la lanzada; luego, ejecútalo |
 | **Sectario** | Mantiene la distancia y lanza esferas de energía | Devuelve las esferas o acércate deslizándote |
 | **Ojo del Vacío** | Vuela, atraviesa paredes y se lanza en picado | Para el picado o golpéalo al subir |
 | **Arcipreste de las Mareas** (jefe) | Tentáculos del suelo, abanico de esferas, embestida roja; 2.ª fase más rápida | Lee el suelo, devuelve esferas, esquiva la embestida |
@@ -110,14 +122,20 @@ Referencia principal: **Blasphemous** (The Game Kitchen). Lo que tomamos de su l
   selectivos y sombras de contacto; cada sprite tiene además su *normal map* para las luces 2D.
 - **Animación expresiva a ~10–20 fps:** anticipación larga en los ataques enemigos (telegrafiados),
   fotograma de impacto con estela (*smear*), continuación, movimiento secundario en capas, barbas y tentáculos.
-- **Arquitectura religiosa decadente:** columnas, arcos ojivales, estandartes carmesí, candelabros y
-  estatuas votivas (la **Madre de las Profundidades**, nuestro eco de la Piedad).
+- **Arquitectura religiosa decadente:** columnas, arcos ojivales, estandartes carmesí, candelabros,
+  estatuas votivas (la **Madre de las Profundidades**, nuestro eco de la Piedad), **vidrieras** con motivos
+  del mito (un ojo, Dagón, el Signo Antiguo) y **pilas de cadáveres** atravesados por arpones.
+- **Suelos de adoquines ocres** con el canto muy iluminado y tierra con cascotes debajo.
 - **Luz como narrativa:** zonas oscuras salpicadas de velas y altares; lo sagrado y lo prohibido brilla
   (bloom) y guía al jugador.
-- **Paleta por zona:** costa verde enfermizo y luna pálida; ruinas verde abismal con runas;
-  santuario cálido (ámbar y carmesí) con vidrieras verdosas; arrecife violeta y tormentoso.
-- **Fondos:** 4–5 capas por zona con perspectiva atmosférica y paralaje; siluetas colosales lejanas
-  (el Durmiente tras Innsmouth, R'lyeh emergiendo) y siluetas oscuras en primer plano.
+- **Paleta por zona:** costa gris azulada con niebla y árboles muertos; ruinas en bruma verde luminosa;
+  santuario dorado y polvoriento con vidrieras rojas y turquesa; arrecife con ocaso naranja y púrpura.
+- **Fondos luminosos:** 5–6 capas por zona de valores medios, con perspectiva atmosférica fuerte y paralaje
+  (como los bosques brumosos de Blasphemous); lo oscuro queda para el primer plano. Siluetas colosales:
+  el Durmiente tras Innsmouth, el **Coloso Ahogado encadenado** en la nave del Santuario y R'lyeh emergiendo.
+  Los muros de las Ruinas están derrumbados y el Santuario alterna arcos abiertos y vidrieras para que se vean.
+- **Efectos de combate:** chispazos, sangre, estrellas, chispas de escudo, polvo y el Signo Arcano, pintados
+  fotograma a fotograma y sin iluminar para que el bloom los haga brillar.
 - **Interfaz:** marcos góticos de metal y oro, medallón con el retrato, tipografía gótica pixelada
   para los títulos (Jacquard 24) y una pixel sans legible para los textos (Jersey 10).
 - **Sonido:** zumbidos graves, mar lejano, coros disonantes en los altares y en los jefes.

@@ -6,8 +6,9 @@ Está hecho con **Unity 6.6**, el **Universal Render Pipeline (URP) 2D** y **C#*
 
 ![Personajes](docs/img/personajes.png)
 
-*El Ahogado (jugador), un Profundo, un Sectario de Dagón, un Ojo del Vacío y el jefe, el Arcipreste de las Mareas.
-Todo el arte —personajes animados fotograma a fotograma, escenarios, fondos e interfaz— se pinta por código.*
+*El Ahogado (jugador), un Profundo, el Guardián de la Concha, un Sectario de Dagón, un Ojo del Vacío y el jefe,
+el Arcipreste de las Mareas. Todo el arte —personajes animados fotograma a fotograma, escenarios, fondos,
+efectos e interfaz— se pinta por código.*
 
 ![Costa de Innsmouth](docs/img/costa_innsmouth.png)
 
@@ -17,8 +18,21 @@ Todo el arte —personajes animados fotograma a fotograma, escenarios, fondos e 
 
 ![El Arcipreste de las Mareas](docs/img/arcipreste.png)
 
+![Arrecife del Diablo](docs/img/arrecife.png)
+
 *Vistas previas compuestas fuera de Unity con el mismo arte del juego y una aproximación de su iluminación
 (luces 2D, bloom, viñeta). En Unity además hay paralaje, niebla en movimiento, llamas animadas y partículas.*
+
+### El combate
+
+![Golpe a un Profundo](docs/img/combate_golpe.png)
+
+![La espada rebota en el escudo del Guardián de la Concha](docs/img/combate_escudo.png)
+
+![Ejecución de un Guardián aturdido](docs/img/ejecucion.png)
+
+*Arriba: el chispazo y la sangre de cada golpe. En medio: el escudo de nácar del Guardián detiene los golpes de
+frente. Abajo: la ejecución de un enemigo aturdido.*
 
 ---
 
@@ -33,14 +47,16 @@ Todo el arte —personajes animados fotograma a fotograma, escenarios, fondos e 
 | Reclinatorios | **Altares del Signo Antiguo**: curan y guardan el punto de reaparición, pero las criaturas reviven | ✅ |
 | Culpa | **Fragmento de mente**: al morir queda donde caíste y, hasta que lo recuperes, tu Revelación se reduce | ✅ |
 | Lágrimas de Expiación | **Oro de Innsmouth** | ✅ |
-| Enemigos | Profundo (cuerpo a cuerpo), Sectario (a distancia), Ojo del Vacío (volador) | ✅ |
+| Enemigos | Profundo (cuerpo a cuerpo), Sectario (a distancia), Ojo del Vacío (volador) y **Guardián de la Concha**, con un escudo que para los golpes de frente | ✅ |
+| Ejecuciones | Ataca a un enemigo **aturdido** para rematarlo con una animación brutal (más Revelación y más oro) | ✅ |
+| Golpes que se sienten | **Chispazos**, **sangre**, estrella blanca al recibir daño, chispas al chocar con un escudo, congelación del golpe (*hit-stop*) y temblor | ✅ |
 | Jefes | **El Arcipreste de las Mareas**: tentáculos, abanico de esferas, embestida imparable y 2 fases | ✅ |
 | Ataques rojos imparables | Brillo **naranja** = se puede parar · Brillo **rojo** = hay que esquivar | ✅ |
 | Animación a mano | **Animación fotograma a fotograma** con anticipación, estelas (*smears*) y continuación, en Animator | ✅ |
 | Pixel art iluminado | **Luces 2D** de URP: velas, faroles y altares iluminan la piedra gracias a sus **normal maps** | ✅ |
 | Atmósfera | **Bloom**, viñeta, grano, niebla, rayos de luz, paralaje por zona y siluetas en primer plano | ✅ |
 | Cámara pixel-perfect | 640×360 píxeles de arte escalados sin deformarse (×2 en 720p, ×3 en 1080p, ×6 en 4K) | ✅ |
-| Interfaz gótica | Marcos de oro, medallón del personaje y fuentes pixel góticas | ✅ |
+| Interfaz gótica | Marcos de oro, medallón del personaje, fuentes pixel góticas, aviso de tecla que flota sobre altares y enemigos ("**[E] Rezar**", "**[J] Ejecutar**") y el estandarte **Requiescat in Profundis** al vencer al jefe | ✅ |
 | Sonido | Efectos y ambiente sintetizados por código (no hacen falta archivos de audio) | ✅ |
 
 Un nivel completo con 4 zonas y su propio ambiente: **Costa de Innsmouth → Ruinas Ciclópeas →
@@ -74,7 +90,7 @@ Santuario de las Mareas (jefe) → Arrecife del Diablo**.
 |---|---|---|
 | Moverse | A / D o flechas | Stick izquierdo / cruceta |
 | Saltar (mantén para saltar más) | Espacio o K | A |
-| Atacar (hasta 3 golpes) | J | X |
+| Atacar (hasta 3 golpes) · Ejecutar a un enemigo aturdido | J | X |
 | Esquivar deslizándote | L o Shift | B |
 | Parar (parry) | I | RB |
 | Signo Arcano (gasta Revelación) | U | Y |
@@ -100,14 +116,29 @@ Unity 6.5 declaró obsoleto el render pipeline integrado (Built-in), así que el
 - **Luz.** Una luz global por zona (verde enfermizo en la costa, ámbar en el santuario...) y luces
   puntuales en velas, faroles, altares, el báculo del jefe y la mirilla de la escafandra. Lo que brilla
   (ojos, brasas, runas, llamas) se dibuja aparte sin iluminar y alimenta el **bloom**.
-- **Escenario pintado**, no baldosas repetidas: losas irregulares, sillería que se funde en negro,
-  musgo, columnas y arcos ojivales al fondo (`TerrainPainter.cs`), estatuas, candelabros, estandartes,
-  jaulas, cadenas, corales... y fondos con **perspectiva atmosférica** (El Durmiente tras Innsmouth,
-  la catedral sumergida, R'lyeh emergiendo del mar).
+- **Escenario pintado**, no baldosas repetidas: caminos de **adoquines ocres** con tierra y cascotes debajo,
+  sillería que se funde en negro, musgo, columnas y arcos ojivales al fondo (`TerrainPainter.cs`), muros
+  **derrumbados** en las Ruinas y arcos abiertos en el Santuario. Encima, el decorado: **vidrieras** que
+  brillan con motivos lovecraftianos (un ojo, Dagón, el Signo Antiguo), **pilas de cadáveres** atravesados por
+  arpones como en las catedrales de Blasphemous, estatuas, candelabros, estandartes, jaulas y cadenas.
+- **Fondos luminosos y brumosos**, con perspectiva atmosférica por capas (`BackgroundArt.cs`): árboles
+  muertos y el Durmiente en la niebla tras Innsmouth, monolitos de R'lyeh en bruma verde, una nave dorada con
+  un **coloso ahogado encadenado** y un ocaso violeta sobre el Arrecife. Lo oscuro queda para el primer plano.
+- **Golpes con peso.** Cada impacto congela el juego unas centésimas, hace temblar la cámara y dispara
+  efectos pintados a mano en código (`EffectArt.cs`): el chispazo amarillo-naranja con su media luna, la
+  sangre en racimos, la estrella de daño, el estallido del Signo Arcano...
 
 ![Animaciones del Ahogado](docs/img/animaciones_ahogado.png)
 
 *Algunas animaciones del Ahogado: combo (golpes 1 y 3 con su estela), deslizamiento, láudano y parada.*
+
+![Ejecución del Ahogado](docs/img/ejecucion_ahogado.png)
+
+*La ejecución: alza la espada, la clava con una gran estela, la retuerce y la arranca.*
+
+![Efectos de combate](docs/img/efectos.png)
+
+*Los efectos de combate, fotograma a fotograma.*
 
 ---
 
@@ -118,13 +149,13 @@ Assets/_Abismo/
 ├── Scripts/
 │   ├── Core/       GameManager, cámara, entrada, combate, efectos (post-procesado reactivo), sonido, animador
 │   ├── Player/     PlayerController (movimiento, combate y animaciones), PlayerStats
-│   ├── Enemies/    Enemy (base común), Profundo, Sectario, Ojo del Vacío, Arcipreste, proyectiles, tentáculos
+│   ├── Enemies/    Enemy (base común), Profundo, Guardián de la Concha, Sectario, Ojo del Vacío, Arcipreste, proyectiles...
 │   ├── World/      Altares, inscripciones, peligros, oro, paralaje, ambientación por zonas, llamas, brillos
 │   └── UI/         HUD (toda la interfaz se crea por código a 640×360)
 ├── Shaders/        SpriteSilhouette (destellos), SpriteEmissive (partes que brillan), SpriteAdditive (luz)
 ├── Fonts/          Jacquard 24 y Jersey 10 (fuentes pixel con licencia libre OFL)
 ├── Editor/
-│   ├── Art/        El arte en código: personajes (Characters/), terreno, decorado, fondos e interfaz
+│   ├── Art/        El arte en código: personajes (Characters/), terreno, decorado, vidrieras, fondos, efectos e interfaz
 │   ├── Build/      Configuración de URP 2D e importación del arte (hojas de sprites, normal maps, animaciones)
 │   └── AbismoBuilder.cs   El menú "Abismo": monta prefabs y la escena
 └── Levels/         nivel_01.txt  ← el mapa del nivel, ¡en texto!
@@ -140,10 +171,12 @@ Al pulsar **Construir** aparecen además `Art/Generated/` (PNG), `Animations/`, 
 **Ajustar el tacto del personaje.** Abre `Assets/_Abismo/Prefabs/Jugador` y en el Inspector cambia
 los valores de `PlayerController` (velocidad, altura de salto, daño del combo, ventana de parada...).
 Construir respeta tus prefabs; `Abismo → Restablecer prefabs y construir` los vuelve a crear.
+(Al actualizar a esta versión, la primera construcción vuelve a crear los prefabs una vez, porque cambian.)
 
 **Diseñar niveles.** Abre `Assets/_Abismo/Levels/nivel_01.txt` con cualquier editor de texto. Cada
 carácter es una casilla de 32×32 píxeles (`#` roca, `=` plataforma, `^` coral espinoso, `D` Profundo,
-`A` altar, `S` estatua, `L` candelabro...; la leyenda completa está al principio del fichero). La línea
+`G` Guardián de la Concha, `A` altar, `S` estatua, `L` candelabro...; la leyenda completa está al principio
+del fichero). La línea
 `zonas:` del final dice en qué columna empieza cada zona. Guarda y usa **Abismo → Construir demo jugable**:
 el terreno se vuelve a pintar a partir del mapa y el decorado pequeño se coloca solo.
 
@@ -159,14 +192,16 @@ de la luz de cada zona; `Volumen Global` tiene el bloom, la viñeta y el grano; 
   `Art/Generated/NO_REGENERAR.txt` para que Construir no lo sobrescriba.
 
 **Crear un enemigo nuevo.** Crea una clase que herede de `Enemy`, escribe su comportamiento en
-`Tick(float dt)` y elige su animación con `Animate("nombre")`. Mira `DeepOneEnemy.cs` como ejemplo.
+`Tick(float dt)` y elige su animación con `Animate("nombre")`. Mira `DeepOneEnemy.cs` como ejemplo, y
+`GuardianEnemy.cs` para ver cómo se bloquean golpes (`TryBlock`). Para que no se pueda ejecutar, sobrescribe
+`Executable`.
 
 ---
 
 ## Próximos pasos sugeridos
 
 1. Guardar la partida (altar activo, oro, jefes vencidos).
-2. Más movimientos: agarrarse a bordes, trepar, golpe hacia abajo, ejecuciones al enemigo aturdido.
+2. Más movimientos: agarrarse a bordes, trepar, golpe hacia abajo.
 3. Equipo al estilo de los rosarios y reliquias: **amuletos** que se compran con oro de Innsmouth.
 4. Música, más zonas, un mapa y más jefes.
 
