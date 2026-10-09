@@ -27,7 +27,7 @@ namespace Abismo.EditorTools
         const string FontFolder = Root + "/Fonts";
         const string LevelFile = Root + "/Levels/nivel_01.txt";
         const string ScenePath = SceneFolder + "/Nivel_01.unity";
-        const string PrefabLabel = "AbismoV2";
+        const string PrefabLabel = "AbismoV3";
 
         // Resolución de referencia: 640×360 píxeles de arte a 32 px por unidad (20 × 11,25 casillas).
         const int RefWidth = 640, RefHeight = 360;
@@ -36,7 +36,7 @@ namespace Abismo.EditorTools
         // Orden de dibujado (todo en la capa de ordenación "Default").
         const int OrderBackWall = -15, OrderPropsBack = -8, OrderPropsHanging = -7, OrderShafts = -5, OrderTerrain = 0,
                   OrderPlatforms = 1, OrderHazards = 2, OrderInteractables = 3, OrderBoss = 4, OrderEnemies = 5, OrderPlayer = 10,
-                  OrderPickups = 15, OrderWater = 20, OrderForeground = 60;
+                  OrderPickups = 15, OrderWater = 20, OrderForeground = 60, OrderWindows = -12, OrderCorpses = -9;
 
         [MenuItem("Abismo/Construir demo jugable", false, 0)]
         public static void BuildDemo() => Build(false, false);
@@ -116,7 +116,7 @@ namespace Abismo.EditorTools
                 string warning = PipelineSetup.InputHandlingWarning();
                 EditorUtility.DisplayDialog("Abismo",
                     $"¡Listo en {watch.Elapsed.TotalSeconds:0} s! Se ha creado y abierto la escena Nivel_01.\n\nPulsa ▶ (Play) para jugar.\n" +
-                    "Controles: A/D mover · Espacio saltar · J atacar · L esquivar · I parar · F curarse · U conjuro · E interactuar · Esc pausa" +
+                    "Controles: A/D mover · Espacio saltar · J atacar (o ejecutar a un enemigo aturdido) · L esquivar · I parar · F curarse · U conjuro · E interactuar · Esc pausa" +
                     (warning != null ? "\n\nAviso: " + warning : ""),
                     "¡A jugar!");
             }
@@ -222,6 +222,7 @@ namespace Abismo.EditorTools
             public readonly Dictionary<string, float> AnimationFps = new Dictionary<string, float>();
             public readonly List<(TerrainChunk chunk, Sprite sprite, bool back)> Terrain = new List<(TerrainChunk, Sprite, bool)>();
             public readonly Dictionary<Zone, List<(BackgroundLayer layer, Sprite sprite)>> Backgrounds = new Dictionary<Zone, List<(BackgroundLayer, Sprite)>>();
+            public readonly List<EffectLibrary.Clip> Effects = new List<EffectLibrary.Clip>();
             public Font TitleFont, TextFont;
 
             public Sprite this[string name]
@@ -242,7 +243,7 @@ namespace Abismo.EditorTools
             var baker = new ArtBaker(Progress);
 
             // Personajes.
-            var characters = new CharacterArt[] { new AhogadoArt(), new ProfundoArt(), new SectarioArt(), new OjoArt(), new ArcipresteArt() };
+            var characters = new CharacterArt[] { new AhogadoArt(), new ProfundoArt(), new GuardianArt(), new SectarioArt(), new OjoArt(), new ArcipresteArt() };
             var pending = new List<ArtBaker.PendingCharacter>();
             for (int i = 0; i < characters.Length; i++)
             {
@@ -253,7 +254,7 @@ namespace Abismo.EditorTools
             // Decorado y objetos.
             Progress("Pintando el decorado", 0.18f);
             var propPaths = new Dictionary<string, (string color, string glow)>();
-            foreach (var prop in PropArt.Statics().Concat(PropArt.Gameplay()))
+            foreach (var prop in PropArt.Statics().Concat(PropArt.Gameplay()).Concat(SceneryArt.All()))
             {
                 string path = baker.AddSprite("Decorado", prop.Name, prop.Color, prop.Normal, prop.Pivot01, prop.Border);
                 string glow = prop.Emission != null ? baker.AddSprite("Decorado", prop.Name + "_brillo", prop.Emission, null, prop.Pivot01) : null;
@@ -266,6 +267,13 @@ namespace Abismo.EditorTools
                 var names = Enumerable.Range(0, anim.Frames.Count).Select(i => $"{anim.Name}_{i:00}").ToList();
                 animPaths[anim.Name] = (baker.AddSheet("Decorado", anim.Name, anim.Frames, names, anim.Normals, anim.Pivot01), names);
                 art.AnimationFps[anim.Name] = anim.Fps;
+            }
+            // Efectos de combate (chispazos, sangre, polvo...).
+            var effectPaths = new List<(PropAnimation anim, string path, List<string> names)>();
+            foreach (var anim in EffectArt.All())
+            {
+                var names = Enumerable.Range(0, anim.Frames.Count).Select(i => $"{anim.Name}_{i:00}").ToList();
+                effectPaths.Add((anim, baker.AddSheet("Efectos", anim.Name, anim.Frames, names, null, anim.Pivot01), names));
             }
             var pixel = new PixelCanvas(4, 4);
             for (int i = 0; i < pixel.Pixels.Length; i++) pixel.Pixels[i] = new Color32(255, 255, 255, 255);
@@ -308,6 +316,15 @@ namespace Abismo.EditorTools
             {
                 var sheet = ArtBaker.LoadSheet(kv.Value.path);
                 art.Animations[kv.Key] = kv.Value.names.Select(n => sheet.TryGetValue(n, out var s) ? s : null).Where(s => s != null).ToArray();
+            }
+            foreach (var (anim, path, names) in effectPaths)
+            {
+                var sheet = ArtBaker.LoadSheet(path);
+                art.Effects.Add(new EffectLibrary.Clip
+                {
+                    name = anim.Name, fps = anim.Fps,
+                    frames = names.Select(n => sheet.TryGetValue(n, out var s) ? s : null).Where(s => s != null).ToArray(),
+                });
             }
             art.Sprites["pixel"] = ArtBaker.LoadSprite(pixelPath);
             foreach (var t in terrainPaths) art.Terrain.Add((t.chunk, ArtBaker.LoadSprite(t.path), t.back));
@@ -471,7 +488,7 @@ namespace Abismo.EditorTools
 
         sealed class Prefabs
         {
-            public GameObject Player, DeepOne, Cultist, Eye, Boss;
+            public GameObject Player, DeepOne, Guardian, Cultist, Eye, Boss;
             public GameObject Orb, Spell, Coin, Fragment, Tentacle, Altar, Inscription;
         }
 
@@ -492,6 +509,8 @@ namespace Abismo.EditorTools
             var gold = p.Coin.GetComponent<GoldPickup>();
             p.DeepOne = GetOrBuild("Profundo", overwrite, () => BuildEnemy<DeepOneEnemy>(ctx, "Profundo", "profundo", new Vector2(0.9f, 1.6f), false, gold,
                 e => { e.ConfigureStats("Profundo", 45, 20, 0f, true); e.ConfigureDeath(0.95f); }, null));
+            p.Guardian = GetOrBuild("GuardianDeLaConcha", overwrite, () => BuildEnemy<GuardianEnemy>(ctx, "GuardianDeLaConcha", "guardian", new Vector2(1.1f, 1.95f), false, gold,
+                e => { e.ConfigureStats("Guardián de la Concha", 75, 45, 0.7f, true); e.ConfigureDeath(1.1f); }, null));
             p.Cultist = GetOrBuild("Sectario", overwrite, () => BuildEnemy<CultistEnemy>(ctx, "Sectario", "sectario", new Vector2(0.8f, 1.85f), false, gold,
                 e => { e.ConfigureStats("Sectario", 30, 25, 0f, true); e.ConfigureDeath(1.05f); e.projectilePrefab = p.Orb.GetComponent<Projectile>(); },
                 v => AddLight(v, new Vector2(0.55f, 2.6f), new Color(1f, 0.55f, 0.25f), 0.9f, 2.4f, 0.7f, true, 0.3f)));
@@ -691,6 +710,7 @@ namespace Abismo.EditorTools
                         case 'P': player = Spawn(ctx.Prefabs.Player, feet, entities).GetComponent<PlayerController>(); break;
                         case 'A': Spawn(ctx.Prefabs.Altar, feet, entities); break;
                         case 'D': Spawn(ctx.Prefabs.DeepOne, feet, entities); break;
+                        case 'G': Spawn(ctx.Prefabs.Guardian, feet, entities); break;
                         case 'C': Spawn(ctx.Prefabs.Cultist, feet, entities); break;
                         case 'V': Spawn(ctx.Prefabs.Eye, feet + Vector3.up * 0.5f, entities); break;
                         case 'B': boss = Spawn(ctx.Prefabs.Boss, feet, entities).GetComponent<BossArchpriest>(); break;
@@ -770,6 +790,7 @@ namespace Abismo.EditorTools
             systems.AddComponent<InputReader>();
             systems.AddComponent<Sfx>();
             var manager = systems.AddComponent<GameManager>();
+            systems.AddComponent<EffectLibrary>().clips = ctx.Art.Effects;
             var hud = BuildHud(ctx);
 
             manager.player = player;
@@ -1046,7 +1067,18 @@ namespace Abismo.EditorTools
                     if (level.At(x, y - 1) == '#' && x - lastFloorX >= 3 && !NearOccupied(occupied, x, y, 2) && level.At(x, y + 1) != '#')
                     {
                         string prop = FloorProp(zone, h, level.IsBackWall(x, y));
-                        if (prop != null)
+                        if (prop != null && prop.StartsWith("pila_"))
+                        {
+                            // Pilas de cadáveres atravesados por arpones (como en las catedrales de Blasphemous):
+                            // necesitan un tramo de suelo libre tan ancho como ellas.
+                            int half = Mathf.CeilToInt(ctx.Art.PropInfo[prop].Color.Width / ArtBaker.PixelsPerUnit * 0.5f);
+                            if (x - lastFloorX >= half + 2 && FloorClear(level, occupied, x, y, half))
+                            {
+                                PlaceProp(ctx, prop, new Vector3(x + 0.5f, y, 0f), parent, OrderCorpses);
+                                lastFloorX = x + half;
+                            }
+                        }
+                        else if (prop != null)
                         {
                             PlaceProp(ctx, prop, new Vector3(x + 0.5f, y, 0f), parent, OrderPropsBack);
                             lastFloorX = x;
@@ -1065,13 +1097,15 @@ namespace Abismo.EditorTools
                 }
             }
 
-            // Rayos de luz en el santuario y siluetas en primer plano (dan profundidad).
+            PlaceWindows(ctx, parent);
+
+            // Rayos de luz en las ruinas y siluetas en primer plano (dan profundidad).
             for (int x = 6; x < level.Width - 6; x += 1)
             {
                 var zone = level.ZoneAt(x);
                 int floor = level.FloorBelowTop(x);
                 if (floor < 0) continue;
-                if (zone == Zone.Sanctuary && x % 9 == 4)
+                if (zone == Zone.Ruins && x % 11 == 4 && level.IsBackWall(x, floor))
                 {
                     var shaft = AddSprite(new GameObject("RayoDeLuz"), ctx.Art.Animations["rayo_luz"][0], ctx.Mat.Additive, OrderShafts, new Color(1f, 0.9f, 0.7f, 0.5f));
                     shaft.transform.SetParent(parent, false);
@@ -1080,13 +1114,76 @@ namespace Abismo.EditorTools
                 }
                 if (x % 37 == 18)
                 {
-                    string name = level.IsBackWall(x, floor) ? "primer_plano_columna" : "primer_plano_escombros";
-                    var fg = PlaceProp(ctx, name, new Vector3(x + 0.5f, floor - 1.5f, 0f), parent, OrderForeground);
+                    bool indoors = level.IsBackWall(x, floor);
+                    bool corpses = indoors && (zone == Zone.Sanctuary || zone == Zone.Ruins) && (x / 37) % 2 == 1;
+                    string name = corpses ? "pila_ahogados_a" : indoors ? "primer_plano_columna" : "primer_plano_escombros";
+                    var fg = PlaceProp(ctx, name, new Vector3(x + 0.5f, floor - (corpses ? 0.7f : 1.5f), 0f), parent, OrderForeground);
+                    if (corpses)
+                    {
+                        // Pila de cadáveres en primer plano: casi una silueta, sin luces.
+                        var sr = fg.GetComponent<SpriteRenderer>();
+                        sr.sharedMaterial = ctx.Mat.Unlit;
+                        sr.color = new Color(0.17f, 0.16f, 0.19f);
+                        fg.transform.localScale = new Vector3(1.25f, 1.25f, 1f);
+                    }
                     var parallax = fg.AddComponent<ParallaxLayer>();
                     parallax.Configure(new Vector2(-0.18f, -0.06f), Vector2.zero, 0f);
                     parallax.SetReference(new Vector2(x + 0.5f, floor + 3f)); // en su sitio cuando la cámara lo tiene delante
                 }
             }
+        }
+
+        /// <summary>
+        /// Vidrieras en los arcos del muro de fondo (santuario y, alternas, ruinas), con su luz de color y un haz
+        /// de polvo que cae en diagonal; en los huecos muy altos del santuario, además, un rosetón.
+        /// </summary>
+        static void PlaceWindows(Context ctx, Transform parent)
+        {
+            var level = ctx.Level;
+            string[] windows = { "vidriera_a", "vidriera_b", "vidriera_c" };
+            Color[] tints = { new Color(1f, 0.45f, 0.35f), new Color(0.45f, 0.9f, 0.85f), new Color(1f, 0.75f, 0.4f) };
+            foreach (var slot in TerrainPainter.ArchSlots(level.IsBackWall, level.Width, level.Height, level.ZoneAt))
+            {
+                int bay = slot.X / 256;
+                if (slot.Zone != Zone.Sanctuary && !(slot.Zone == Zone.Ruins && bay % 2 == 0)) continue;
+                string name = windows[bay % windows.Length];
+                if (!ctx.Art.PropInfo.TryGetValue(name, out var info)) continue;
+                float topPx = slot.FloorY + slot.Top - 14f;
+                float bottomPx = topPx - info.Color.Height;
+                if (bottomPx < slot.FloorY + 24f) continue;
+
+                float ppu = ArtBaker.PixelsPerUnit;
+                var window = PlaceProp(ctx, name, new Vector3(slot.X / ppu, bottomPx / ppu, 0f), parent, OrderWindows);
+                if (slot.Zone == Zone.Ruins) window.GetComponent<SpriteRenderer>().color = new Color(0.8f, 0.85f, 0.8f);
+                Color tint = tints[bay % tints.Length];
+                float midY = info.Color.Height * 0.5f / ppu;
+                AddLight(window, new Vector2(0f, midY), tint, 0.55f, 4.5f, 0.75f, true, 0.05f);
+                if (ctx.Art.Sprites.TryGetValue("rayo_vidriera", out var beam))
+                {
+                    var shaft = AddSprite(Child("Haz", window, new Vector2(0.15f, midY)), beam, ctx.Mat.Additive, OrderShafts,
+                                          new Color(Mathf.Lerp(tint.r, 1f, 0.5f), Mathf.Lerp(tint.g, 1f, 0.5f), Mathf.Lerp(tint.b, 1f, 0.5f), 0.55f));
+                    shaft.transform.localScale = new Vector3(1.3f, 1.3f, 1f);
+                }
+
+                // Rosetón por encima del arco si el hueco es muy alto.
+                float roseCenter = slot.FloorY + slot.Top + 62f;
+                if (slot.Zone == Zone.Sanctuary && slot.Span - (roseCenter - slot.FloorY) > 64f && ctx.Art.PropInfo.ContainsKey("vidriera_rosa"))
+                {
+                    var rose = PlaceProp(ctx, "vidriera_rosa", new Vector3(slot.X / ppu, roseCenter / ppu, 0f), parent, OrderWindows);
+                    AddLight(rose, Vector2.zero, new Color(1f, 0.6f, 0.4f), 0.45f, 3.5f, 0.75f, true);
+                }
+            }
+        }
+
+        /// <summary>Suelo firme y despejado en [x-half, x+half] (para objetos anchos).</summary>
+        static bool FloorClear(LevelData level, HashSet<Vector2Int> occupied, int x, int y, int half)
+        {
+            for (int dx = -half; dx <= half; dx++)
+            {
+                char c = level.At(x + dx, y);
+                if (level.At(x + dx, y - 1) != '#' || (c != '.' && c != ':') || level.At(x + dx, y + 1) == '#') return false;
+            }
+            return !NearOccupied(occupied, x, y, half + 1);
         }
 
         static bool NearOccupied(HashSet<Vector2Int> occupied, int x, int y, int radius)
@@ -1106,23 +1203,30 @@ namespace Abismo.EditorTools
                     if (h < 0.13f) return "red";
                     if (h < 0.15f) return "huesos";
                     if (h < 0.18f) return "coral_a";
+                    if (h < 0.26f) return "pila_peces";
+                    if (h < 0.3f) return "pila_ahogados_b";
                     return null;
                 case Zone.Ruins:
                     if (h < 0.08f) return "escombros_b";
                     if (h < 0.14f) return "escombros_c";
                     if (h < 0.2f) return indoors ? "columna_rota" : "escombros_a";
                     if (h < 0.25f) return "velas_suelo";
+                    if (h < 0.34f) return "pila_profundos";
+                    if (h < 0.38f) return "pila_peces";
                     return null;
                 case Zone.Sanctuary:
                     if (h < 0.18f) return "velas_suelo";
                     if (h < 0.24f) return "escombros_a";
                     if (h < 0.28f) return "columna_rota";
+                    if (h < 0.38f) return "pila_ahogados_a";
+                    if (h < 0.46f) return "pila_ahogados_b";
                     return null;
                 default:
                     if (h < 0.12f) return "coral_a";
                     if (h < 0.22f) return "coral_b";
                     if (h < 0.26f) return "huesos";
                     if (h < 0.29f) return "escombros_b";
+                    if (h < 0.35f) return "pila_peces";
                     return null;
             }
         }
@@ -1226,6 +1330,7 @@ namespace Abismo.EditorTools
             hud.separatorSprite = a["ui_separador"];
             hud.bossFrameSprite = a["ui_jefe_marco"];
             hud.promptSprite = a["ui_aviso"];
+            hud.keySprite = a["ui_tecla"];
             hud.vignetteSprite = a["ui_vineta"];
             hud.signSprite = a["ui_signo"];
             hud.titleFont = a.TitleFont;

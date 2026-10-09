@@ -15,7 +15,7 @@ namespace Abismo
         [SerializeField] float patrolSpeed = 1f;
         [SerializeField] float approachSpeed = 1.7f;
         [SerializeField] float aggroRange = 7.5f;
-        [SerializeField] float attackRange = 2.4f;
+        [SerializeField] float attackRange = 2.3f;
         [Tooltip("Tiempo que tarda en darse la vuelta cuando el jugador se le pone detrás.")]
         [SerializeField] float turnDelay = 0.55f;
         [SerializeField] float guardTime = 0.8f;
@@ -24,14 +24,15 @@ namespace Abismo
         [SerializeField] float recoverTime = 0.95f;
         [SerializeField] float lungeSpeed = 5f;
         [SerializeField] int attackDamage = 20;
-        [SerializeField] Vector2 attackOffset = new Vector2(1.55f, 1.05f);
-        [SerializeField] Vector2 attackSize = new Vector2(2.6f, 1.0f);
+        [Tooltip("Lanzada por encima del escudo, a la altura de la cabeza: la punta llega a (2.4, 1.5).")]
+        [SerializeField] Vector2 attackOffset = new Vector2(1.75f, 1.55f);
+        [SerializeField] Vector2 attackSize = new Vector2(1.5f, 0.7f);
 
         [Header("Escudo")]
         [Tooltip("Golpes bloqueados seguidos que rompen su guardia (y lo aturden).")]
         [SerializeField] int guardBreakHits = 4;
         [SerializeField] float guardMemory = 1.6f;
-        [SerializeField] Vector2 shieldOffset = new Vector2(0.75f, 1.1f);
+        [SerializeField] Vector2 shieldOffset = new Vector2(0.62f, 0.92f);
 
         AI ai = AI.Patrol;
         float aiTimer, lostTimer, behindTimer, blockAnimUntil, lastBlockTime;
@@ -204,7 +205,7 @@ namespace Abismo
             Gizmos.color = new Color(1f, 0.5f, 0.1f, 0.6f);
             Gizmos.DrawWireCube(transform.position + new Vector3(attackOffset.x * f, attackOffset.y), attackSize);
             Gizmos.color = new Color(0.6f, 0.85f, 1f, 0.6f);
-            Gizmos.DrawWireCube(transform.position + new Vector3(shieldOffset.x * f, shieldOffset.y), new Vector3(0.4f, 1.5f));
+            Gizmos.DrawWireCube(transform.position + new Vector3(shieldOffset.x * f, shieldOffset.y), new Vector3(0.95f, 1.45f));
         }
     }
 }

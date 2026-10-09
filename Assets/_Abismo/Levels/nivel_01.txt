@@ -7,6 +7,7 @@
 //   ^  coral espinoso          ~  agua abisal                  |  reja de la arena del jefe
 //   P  jugador                 A  altar (punto de control)     $  montón de oro
 //   D  Profundo                C  Sectario                     V  Ojo del Vacío      B  jefe
+//   G  Guardián de la Concha (escudo: atácalo por la espalda, rómpele la guardia o para su lanzada)
 //   S  estatua de la Madre     I  ídolo del Durmiente          L  candelabro         F  farol de muelle
 //   1-9  inscripción (su texto va al final)     a-z  nombre de zona (su texto va al final)
 //   .  aire
@@ -46,13 +47,13 @@
 ##.........................................................................::::::::::::::::::::::::::::::################::::::::::::::::::::|::::====:::::::::::::====::::|:::::.............##
 ##.........................................................................:::::::::::::::::::====:::::::################::::::::::::::::::::|:::::::::::::::::::::::::::::|:::::.............##
 ##.........................................................................::::::::::::::::::::::::::::::################:::L:A::::8::L::c:::|::L::::::::::S::::::B:::::L::|:::::.d....9..$...##
-##..............................................................$.......C..::b::::::I:::5::::::::::::::::#######################################################################################
+##..............................................................$.......C..::b:5::::I:::G::::::::::::::::#######################################################################################
 ##.............................................................===..#######################:::::::::====:#######################################################################################
 ##...............................$..................................#######################::::::::::::::#######################################################################################
 ##..............................====............4....D..............#######################::::::::::::::#######################################################################################
 ##...........................................############....##############################:===:====:::::#######################################################################################
 ##.a.P...A.L.1.....2F.........3........D..F..############....##############################::::::::::::::#######################################################################################
-########################....#############################^^^^##############################:6:::D::::D:::#######################################################################################
+########################....#############################^^^^##############################:6:::D::::G:::#######################################################################################
 ########################....####################################################################################################################################################################
 ########################~~~~####################################################################################################################################################################
 ########################~~~~####################################################################################################################################################################
@@ -65,9 +66,9 @@ c: Santuario de las Mareas
 d: Arrecife del Diablo
 1: Despiertas en la orilla, con la escafandra llena de agua negra.\n\nMuévete con A/D o las flechas. Salta con ESPACIO: mantenlo pulsado para saltar más alto.\nCon mando: stick izquierdo y botón A.
 2: Ataca con J: puedes encadenar hasta tres golpes.\nEsquiva deslizándote con L o SHIFT: mientras te deslizas, nada puede herirte.\n\nCada golpe que asestas llena tu barra verde de REVELACIÓN.
-3: Cuando una criatura brille en NARANJA, está a punto de atacar.\nPulsa I justo antes del golpe para PARARLO: quedará aturdida y tus golpes harán el doble de daño.\nLas esferas de los sectarios también se pueden devolver así.\n\nSi brilla en ROJO, el ataque no se puede parar: ¡esquiva!
+3: Cuando una criatura brille en NARANJA, está a punto de atacar.\nPulsa I justo antes del golpe para PARARLO: quedará aturdida y tus golpes harán el doble de daño.\nLas esferas de los sectarios también se pueden devolver así.\n\nSi brilla en ROJO, el ataque no se puede parar: ¡esquiva!\n\nA una criatura aturdida puedes EJECUTARLA: acércate y pulsa J.
 4: Pulsa F para beber LÁUDANO y curarte. Los frascos se rellenan al rezar en un altar.\nCon suficiente Revelación, pulsa U para lanzar el SIGNO ARCANO.\n\nReza (E) ante un altar para descansar... aunque las criaturas despertarán de nuevo.
-5: «Que no está muerto lo que yace eternamente,\ny con los eones extraños incluso la muerte puede morir.»\n\n- Grabado en la piedra de la Ciudad sin Nombre
+5: Los Guardianes de la Concha protegen las Ruinas tras sus escudos de nácar.\nNingún golpe de frente los atraviesa: rodéalos, rómpeles la guardia a golpes\no PARA su lanzada... y remátalos mientras siguen aturdidos.\n\nEl Signo Arcano no conoce escudos.
 6: Si caes, un fragmento de tu mente quedará atrás, brillando donde moriste.\nHasta que lo recuperes, tu Revelación quedará mermada.\n\nAbajo + Saltar te deja caer a través de las plataformas de madera.
 7: Ph'nglui mglw'nafh Cthulhu R'lyeh wgah'nagl fhtagn.\n\n«En su morada de R'lyeh, el muerto Cthulhu espera soñando.»
 8: Tras las rejas oficia el Arcipreste de las Mareas, que cambió sus ojos por los de Dagón.\nSus fieles juran que la marea obedece a su báculo.\n\nDescansa ante el altar antes de cruzar.
