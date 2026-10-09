@@ -74,6 +74,7 @@ namespace Abismo.EditorTools
             new AnimSpec("hurt", 3, 10f, false, f => DrawHurt(f)),
             new AnimSpec("death", 12, 12f, false, f => DrawDeath(f)),
             new AnimSpec("pray", 8, 8f, false, f => DrawPray(f)),
+            new AnimSpec("execute", 16, 18f, false, f => DrawExecute(f)),
         };
 
         // ------------------------------------------------------------------
@@ -270,6 +271,70 @@ namespace Abismo.EditorTools
             return Draw(keys.Evaluate(f), default, f >= 5 ? "glow" : null);
         }
 
+        // Ejecución: remate a un enemigo aturdido que está ≈40 px delante. Paso al frente con el Garfio a dos manos
+        // sobre la cabeza (f0-4, destello en f4), lo clava hacia abajo-delante con todo el peso (impacto en f5: la punta
+        // queda en ExecTip y no se mueve hasta f10), lo retuerce temblando (f6-10) y lo arranca en f11 con un floreo
+        // hacia atrás hasta la guardia del idle (f15 = idle f0).
+        static readonly Vector2 ExecTip = new Vector2(40f, 22f);
+
+        /// <summary>Agarre por cinemática inversa: mano delantera en (x, y), hoja a "sword" grados, mano trasera en el puño.</summary>
+        static Pose Grip(Pose p, float x, float y, float sword, float twoHands = 1f) =>
+            p.With(("ik", 1f), ("handX", x), ("handY", y), ("sword", sword), ("grip2", twoHands));
+
+        /// <summary>Espada clavada: la mano se coloca para que la punta siga en ExecTip con la hoja a "angle" grados.</summary>
+        static Pose Planted(Pose p, float angle)
+        {
+            var hand = Sub(ExecTip, Dir(angle, 46f));
+            return Grip(p, hand.x, hand.y, angle);
+        }
+
+        ShadedCanvas DrawExecute(int f)
+        {
+            var idle0 = Idle.With(("crouch", 0.6f), ("cape", 0.15f + Mathf.Sin(0.6f) * 0.12f), ("hose", Mathf.Sin(1.2f) * 0.5f));
+            var step = Idle.With(("legF1", 52f), ("legF2", 18f), ("legB1", -14f), ("legB2", -20f), ("x", 0.5f));
+            var lunge = Idle.With(("legF1", 36f), ("legF2", -2f), ("legB1", -28f), ("legB2", -23f), ("x", 1f));
+            var drive = Idle.With(("legF1", 36f), ("legF2", -2f), ("legB1", -28f), ("legB2", -23f), ("x", 1.5f));
+
+            var keys = new Keyframes()
+                // Anticipación: se agacha y junta las manos en el puño; paso al frente alzando la hoja; capa hacia atrás.
+                .Key(0, Grip(idle0.With(("crouch", 3f), ("lean", 12f), ("head", -4f), ("cape", 0.35f), ("hose", 0.2f)), 12f, 31f, -28f))
+                .Key(1, Grip(step.With(("crouch", 0.5f), ("lean", 0f), ("head", 4f), ("cape", 0.6f), ("capeLift", 0.1f), ("hose", -0.3f)), 14f, 47f, 50f))
+                .Key(2, Grip(lunge.With(("crouch", -0.5f), ("lean", -10f), ("head", 10f), ("cape", 1f), ("capeLift", 0.35f), ("hose", -0.8f)), 0f, 62f, 140f))
+                .Key(3, Grip(lunge.With(("crouch", -1.5f), ("lean", -16f), ("head", 14f), ("cape", 1.25f), ("capeLift", 0.55f), ("hose", -1f)), -3.5f, 62.5f, 168f))
+                // Sostenido arriba (destello en la hoja).
+                .Key(4, Grip(lunge.With(("crouch", -1.8f), ("lean", -17f), ("head", 15f), ("cape", 1.1f), ("capeLift", 0.65f), ("hose", -0.9f)), -4f, 62.8f, 171f))
+                // Golpe (impacto en f5): la hoja llega a ExecTip con una estela grande; f6 = continuación con todo el peso.
+                .Key(5, Planted(drive.With(("crouch", -1f), ("lean", 13f), ("head", -6f), ("cape", 1.45f), ("capeLift", 0.65f), ("hose", -1.2f)), -56f))
+                .Key(6, Planted(drive.With(("crouch", -0.5f), ("lean", 16f), ("head", -3f), ("cape", 1.2f), ("capeLift", 0.45f), ("hose", -0.8f)), -57f))
+                // Clavada: se hunde, retuerce la hoja y tiembla (1 px); la capa sigue oscilando.
+                .Key(7, Planted(drive.With(("crouch", -0.3f), ("lean", 15f), ("head", -4f), ("cape", 0.9f), ("capeLift", 0.3f), ("hose", -0.2f)), -56f))
+                .Key(8, Planted(drive.With(("x", 2.5f), ("crouch", -1f), ("lean", 10f), ("head", -8f), ("cape", 0.45f), ("capeLift", 0.1f), ("hose", 0.4f)), -53f))
+                .Key(9, Planted(drive.With(("x", 1.5f), ("crouch", -1f), ("lean", 11f), ("head", -7f), ("cape", 0.7f), ("capeLift", 0.2f), ("hose", 0.2f)), -54f))
+                .Key(10, Planted(drive.With(("x", 2.5f), ("crouch", -1f), ("lean", 9f), ("head", -9f), ("cape", 0.5f), ("capeLift", 0.1f), ("hose", 0.3f)), -52f))
+                // La arranca hacia arriba y atrás, floreo sobre la cabeza y sacudida hasta la guardia.
+                .Key(11, Grip(lunge.With(("crouch", 0f), ("lean", -10f), ("head", 10f), ("cape", -0.2f), ("capeLift", 0.1f), ("hose", 0.6f)), 6f, 62f, 75f))
+                .Key(12, Grip(Idle.With(("legF1", 26f), ("legF2", 0f), ("legB1", -18f), ("legB2", -20f), ("x", 2f), ("crouch", -0.5f), ("lean", -12f), ("head", 12f),
+                                        ("armB1", -35f), ("armB2", -8f), ("cape", -0.4f), ("capeLift", 0.2f), ("hose", 0.8f)), 1f, 63f, 150f, 0f))
+                .Key(13, Grip(Idle.With(("x", 1f), ("crouch", 2.5f), ("lean", 10f), ("head", -2f), ("armB1", -30f), ("armB2", -10f), ("cape", 0.2f), ("hose", 0.6f)), 17f, 33f, -36f, 0f))
+                .Key(14, Idle.With(("crouch", 1.5f), ("lean", 6f), ("armF1", 24f), ("armF2", 52f), ("sword", -58f), ("cape", 0.1f), ("hose", 0.4f)))
+                .Key(15, idle0);
+            var p = keys.Evaluate(f);
+            var smear = f == 5 ? new SmearSpec { On = true, From = 171f, To = -56f, Strength = 1.2f, AtHand = true }
+                      : f == 6 ? new SmearSpec { On = true, From = 20f, To = -57f, Strength = 0.6f, AtHand = true }
+                      : f == 11 ? new SmearSpec { On = true, From = -52f, To = 75f, Strength = 1f, AtHand = true }
+                      : f == 13 ? new SmearSpec { On = true, From = 110f, To = -36f, Strength = 0.6f, AtHand = true } : default;
+            var c = Draw(p, smear);
+            if (f == 4)
+            {
+                // Destello en la hoja alzada: filo encendido y estrella.
+                var hand = V(p["handX"], p["handY"]);
+                var edge = Dir(p["sword"] + 90f, 2f);
+                c.Capsule(Add(hand, Add(Dir(p["sword"], 14f), edge)), Add(hand, Add(Dir(p["sword"], 38f), edge)), 0.5f, 0.5f, SmearMid, 9.2f);
+                Spark(c, Add(hand, Dir(p["sword"], 31f)), 7f);
+            }
+            return c;
+        }
+
         // ------------------------------------------------------------------
         // Dibujo del personaje a partir de una pose
         // ------------------------------------------------------------------
@@ -278,9 +343,29 @@ namespace Abismo.EditorTools
         {
             public bool On;
             public float From, To, Strength;
+            /// <summary>Estela centrada en la mano (la hoja gira sobre la muñeca) en vez de en el hombro.</summary>
+            public bool AtHand;
         }
 
         static SmearSpec Arc(Pose p, float from, float to, float strength) => new SmearSpec { On = true, From = from, To = to, Strength = strength };
+
+        /// <summary>
+        /// Cinemática inversa de dos huesos: devuelve el codo para que la mano llegue a <paramref name="hand"/>
+        /// (si no alcanza, la acerca hasta el brazo estirado). El codo queda en el lado horario de la línea
+        /// hombro→mano: hacia abajo con el brazo al frente, hacia delante con el brazo en alto.
+        /// </summary>
+        static Vector2 Reach(Vector2 shoulder, ref Vector2 hand, float upper, float fore)
+        {
+            float dx = hand.x - shoulder.x, dy = hand.y - shoulder.y;
+            float dist = Mathf.Sqrt(dx * dx + dy * dy);
+            if (dist < 0.001f) { dx = 0f; dy = -1f; dist = 1f; }
+            float ux = dx / dist, uy = dy / dist;
+            float reach = Mathf.Clamp(dist, Mathf.Abs(upper - fore) + 0.01f, upper + fore - 0.01f);
+            hand = V(shoulder.x + ux * reach, shoulder.y + uy * reach);
+            float along = (upper * upper - fore * fore + reach * reach) / (2f * reach);
+            float off = Mathf.Sqrt(Mathf.Max(0f, upper * upper - along * along));
+            return V(shoulder.x + ux * along + uy * off, shoulder.y + uy * along - ux * off);
+        }
 
         const float Thigh = 14.5f, Shin = 14f, UpperArm = 11f, Forearm = 10f, Spine = 17f;
 
@@ -323,6 +408,18 @@ namespace Abismo.EditorTools
             var handF = Limb(elbowF, p["armF2"], Forearm);
             var elbowB = Limb(shoulderB, p["armB1"], UpperArm);
             var handB = Limb(elbowB, p["armB2"], Forearm);
+            // Cinemática inversa opcional (ejecución): "ik" lleva la mano delantera a (handX, handY) para que la hoja
+            // clavada no se mueva aunque el cuerpo tiemble; "grip2" lleva la mano trasera a la empuñadura (a dos manos).
+            if (p["ik"] > 0f)
+            {
+                handF = Mix(handF, V(p["handX"], p["handY"]), p["ik"]);
+                elbowF = Reach(shoulderF, ref handF, UpperArm, Forearm);
+            }
+            if (p["grip2"] > 0f)
+            {
+                handB = Mix(handB, Add(handF, Dir(p["sword"], -4f)), p["grip2"]);
+                elbowB = Reach(shoulderB, ref handB, UpperArm, Forearm);
+            }
 
             int gHelmet = c.NewGroup(), gTorso = c.NewGroup(), gLegF = c.NewGroup(), gLegB = c.NewGroup();
             int gArmF = c.NewGroup(), gArmB = c.NewGroup(), gCape = c.NewGroup(), gSword = c.NewGroup();
@@ -390,7 +487,9 @@ namespace Abismo.EditorTools
             }
 
             // --- Brazo delantero y el Garfio ---
-            if (smear.On)
+            if (smear.On && smear.AtHand)
+                DrawSmear(c, handF, smear, 10f, 48f);
+            else if (smear.On)
             {
                 var tip = Add(handF, Dir(p["sword"], 46f));
                 float reach = Mathf.Sqrt((tip.x - shoulderF.x) * (tip.x - shoulderF.x) + (tip.y - shoulderF.y) * (tip.y - shoulderF.y));
