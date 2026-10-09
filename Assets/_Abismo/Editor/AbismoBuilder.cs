@@ -1134,8 +1134,8 @@ namespace Abismo.EditorTools
         }
 
         /// <summary>
-        /// Vidrieras en los arcos del muro de fondo (santuario y, alternas, ruinas), con su luz de color y un haz
-        /// de polvo que cae en diagonal; en los huecos muy altos del santuario, además, un rosetón.
+        /// Vidrieras en los arcos cerrados del Santuario (uno de cada dos; por los abiertos se ve la nave con el
+        /// coloso), con su luz de color y un haz de polvo que cae en diagonal; en los huecos muy altos, un rosetón.
         /// </summary>
         static void PlaceWindows(Context ctx, Transform parent)
         {
@@ -1145,7 +1145,7 @@ namespace Abismo.EditorTools
             foreach (var slot in TerrainPainter.ArchSlots(level.IsBackWall, level.Width, level.Height, level.ZoneAt))
             {
                 int bay = slot.X / 256;
-                if (slot.Zone != Zone.Sanctuary && !(slot.Zone == Zone.Ruins && bay % 2 == 0)) continue;
+                if (slot.Zone != Zone.Sanctuary || TerrainPainter.OpenArch(slot.Zone, bay)) continue;
                 string name = windows[bay % windows.Length];
                 if (!ctx.Art.PropInfo.TryGetValue(name, out var info)) continue;
                 float topPx = slot.FloorY + slot.Top - 14f;
@@ -1154,7 +1154,6 @@ namespace Abismo.EditorTools
 
                 float ppu = ArtBaker.PixelsPerUnit;
                 var window = PlaceProp(ctx, name, new Vector3(slot.X / ppu, bottomPx / ppu, 0f), parent, OrderWindows);
-                if (slot.Zone == Zone.Ruins) window.GetComponent<SpriteRenderer>().color = new Color(0.8f, 0.85f, 0.8f);
                 Color tint = tints[bay % tints.Length];
                 float midY = info.Color.Height * 0.5f / ppu;
                 AddLight(window, new Vector2(0f, midY), tint, 0.55f, 4.5f, 0.75f, true, 0.05f);
@@ -1255,10 +1254,10 @@ namespace Abismo.EditorTools
 
             var lighting = new Dictionary<Zone, (Color color, float intensity)>
             {
-                { Zone.Coast, (new Color(0.62f, 0.8f, 0.82f), 0.85f) },
-                { Zone.Ruins, (new Color(0.58f, 0.78f, 0.7f), 0.8f) },
-                { Zone.Sanctuary, (new Color(0.95f, 0.8f, 0.64f), 0.86f) },
-                { Zone.Reef, (new Color(0.64f, 0.64f, 0.92f), 0.8f) },
+                { Zone.Coast, (new Color(0.64f, 0.78f, 0.88f), 0.9f) },
+                { Zone.Ruins, (new Color(0.62f, 0.8f, 0.72f), 0.85f) },
+                { Zone.Sanctuary, (new Color(1f, 0.84f, 0.66f), 0.9f) },
+                { Zone.Reef, (new Color(0.9f, 0.7f, 0.76f), 0.85f) },
             };
 
             var result = new List<ZoneAmbience.Zone>();

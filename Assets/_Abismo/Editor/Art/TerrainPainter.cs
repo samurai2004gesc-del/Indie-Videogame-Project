@@ -532,10 +532,16 @@ namespace Abismo.EditorTools
                     int localY = wy - floorTile * Tile;
                     int spanH = (ceilTile - floorTile + 1) * Tile;
 
+                    // En las Ruinas el muro está derrumbado: por encima de su borde roto se ven los fondos.
+                    int ruinTop = zone == Zone.Ruins ? RuinTop(wx) : int.MaxValue;
+                    if (localY >= ruinTop) continue;
+
                     Color32 c = Architecture(theme, zone, wx, wy, localY, spanH, out float hgt);
+                    if (c.a == 0) continue; // arco abierto: se ve el fondo
                     // Oscuro y algo más apagado arriba: la luz viene del suelo (velas).
                     float k = 0.8f - 0.26f * Mathf.Clamp01(localY / (float)Mathf.Max(1, spanH));
                     c = PixelCanvas.Lerp(theme.Deep, c, k);
+                    if (localY >= ruinTop - 2) c = PixelCanvas.Lerp(c, theme.Stone[4], 0.55f); // canto roto que coge la luz
                     color.Pixels[y * w + x] = c;
                     height[y * w + x] = hgt;
                 }
@@ -548,6 +554,22 @@ namespace Abismo.EditorTools
         const float ArchHalfW = 72f;
 
         static float ArchTop(int spanH) => Mathf.Min(spanH - 24f, 200f);
+
+        /// <summary>
+        /// Arcos abiertos, por los que se ven los fondos (la nave con el coloso, la bruma de R'lyeh): todos en las
+        /// Ruinas y uno de cada dos en el Santuario. Los cerrados del Santuario llevan vidriera.
+        /// </summary>
+        public static bool OpenArch(Zone zone, int bay) => zone == Zone.Ruins || (zone == Zone.Sanctuary && (bay & 1) == 1);
+
+        /// <summary>Altura (px sobre el suelo) del borde roto del muro de las Ruinas, escalonada por hiladas de sillares.</summary>
+        static int RuinTop(int wx)
+        {
+            int col = FloorDiv(wx, 22);
+            float n = PixelCanvas.ValueNoise(col * 0.35f, 3.1f, 0, 71);
+            float jag = PixelCanvas.Hash(col, 5, 72);
+            int top = 118 + Mathf.RoundToInt(n * 120f + jag * 30f);
+            return top / 14 * 14 + 2;
+        }
 
         /// <summary>Un arco del muro de fondo con sitio para una vidriera.</summary>
         public struct ArchSlot
@@ -652,6 +674,7 @@ namespace Abismo.EditorTools
                         return ramp[3];
                     }
                     height = 0.05f;
+                    if (OpenArch(zone, bay)) return PixelCanvas.Clear;
                     // Fondo del nicho: oscuro (ahí van las vidrieras, ver ArchSlots), con sillares apenas insinuados.
                     var niche = Masonry(t, wx, wy, 99, false, out _);
                     return PixelCanvas.Lerp(t.Deep, PixelCanvas.Lerp(ramp[0], niche, 0.3f), 0.55f);
