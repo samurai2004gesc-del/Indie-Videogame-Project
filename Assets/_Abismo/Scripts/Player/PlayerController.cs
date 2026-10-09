@@ -4,8 +4,8 @@ using UnityEngine;
 namespace Abismo
 {
     /// <summary>
-    /// El Ahogado: movimiento, salto, esquiva, combo de 3 golpes, parada (parry),
-    /// curación con láudano, conjuro, daño y muerte. Cada estado reproduce su animación
+    /// El Ahogado: movimiento, salto, esquiva, combo de 3 golpes, parada (parry), ejecuciones de enemigos
+    /// aturdidos, curación con láudano, conjuro, daño y muerte. Cada estado reproduce su animación
     /// fotograma a fotograma ("idle", "run", "attack1"...) y los golpes se activan exactamente
     /// en los fotogramas de impacto (ver AttackData).
     ///
@@ -15,7 +15,7 @@ namespace Abismo
     [RequireComponent(typeof(Rigidbody2D), typeof(CapsuleCollider2D), typeof(PlayerStats))]
     public class PlayerController : MonoBehaviour, IDamageable
     {
-        public enum State { Normal, Dashing, Attacking, Parrying, Healing, Casting, Hurt, Resting, Dead }
+        public enum State { Normal, Dashing, Attacking, Parrying, Executing, Healing, Casting, Hurt, Resting, Dead }
 
         [Header("Referencias (las asigna el constructor automático)")]
         public Transform visual;
@@ -80,6 +80,17 @@ namespace Abismo
         [SerializeField] float parryRecovery = 0.3f;
         [SerializeField] float revelationPerParry = 15f;
 
+        [Header("Ejecución (atacar a un enemigo aturdido)")]
+        [Tooltip("Distancia máxima (a cada lado) para rematar a un enemigo aturdido.")]
+        [SerializeField] float executionRange = 2.4f;
+        [Tooltip("Distancia a la que se coloca el jugador para clavar el arma.")]
+        [SerializeField] float executionStandOff = 1.25f;
+        [Tooltip("Duración total: debe coincidir con la animación \"execute\" (16 fotogramas a 18 fps).")]
+        [SerializeField] float executionDuration = 16f / 18f;
+        [SerializeField] float executionStrikeTime = 5f / 18f;
+        [SerializeField] float executionReleaseTime = 11f / 18f;
+        [SerializeField] float revelationPerExecution = 25f;
+
         [Header("Láudano")]
         [SerializeField] float healDuration = 0.75f;
 
@@ -99,6 +110,8 @@ namespace Abismo
         public PlayerStats Stats => stats;
         public IInteractable CurrentInteractable => interactable;
         public Vector2 Center => (Vector2)transform.position + Vector2.up;
+        /// <summary>Enemigo aturdido al alcance que se puede ejecutar ahora mismo (para el aviso del HUD).</summary>
+        public Enemy ExecutionCandidate { get; private set; }
         public float SpellCost => spellCost;
 
         Rigidbody2D rb;
@@ -122,6 +135,10 @@ namespace Abismo
         readonly List<IDamageable> overlapResults = new List<IDamageable>();
 
         bool parrySucceeded, spellFired;
+        Enemy executionTarget;
+        bool executionStruck, executionReleased;
+        float blockRecoilUntil;
+        readonly List<IDamageable> executionResults = new List<IDamageable>();
         float invulnerableUntil, hazardCooldownUntil;
 
         Vector2 lastSafePosition;
@@ -202,11 +219,15 @@ namespace Abismo
                 case State.Dashing: if (stateTimer >= dashDuration) SetState(State.Normal); break;
                 case State.Attacking: UpdateAttack(); break;
                 case State.Parrying: UpdateParry(); break;
+                case State.Executing: UpdateExecution(); break;
                 case State.Healing: UpdateHeal(); break;
                 case State.Casting: UpdateCast(); break;
                 case State.Hurt: if (stateTimer >= hurtDuration) SetState(State.Normal); break;
                 case State.Resting: if (stateTimer >= 1.2f) SetState(State.Normal); break;
             }
+
+            bool canExecute = grounded && (state == State.Normal || state == State.Attacking || state == State.Parrying);
+            ExecutionCandidate = canExecute ? FindExecutable() : null;
 
             if (ignoredPlatform != null && Time.time >= ignorePlatformUntil)
             {
@@ -240,7 +261,8 @@ namespace Abismo
                     if (!grounded && allowAirDash) v.y = 0f;
                     break;
                 case State.Attacking:
-                    if (attackIsAir) v.x = Mathf.MoveTowards(v.x, moveX * runSpeed * 0.8f, airAcceleration * dt);
+                    if (Time.time < blockRecoilUntil) v.x = -facing * 5.5f; // rebote contra un escudo
+                    else if (attackIsAir) v.x = Mathf.MoveTowards(v.x, moveX * runSpeed * 0.8f, airAcceleration * dt);
                     else v.x = Mathf.MoveTowards(v.x, stateTimer < 0.1f ? facing * 3f : 0f, groundAcceleration * dt);
                     break;
                 case State.Hurt:
@@ -298,7 +320,7 @@ namespace Abismo
             if (Time.time - attackBufferedAt <= attackBufferTime)
             {
                 attackBufferedAt = -10f;
-                BeginSwing(0);
+                if (!TryStartExecution()) BeginSwing(0);
                 return;
             }
             if (input.DashPressed && Time.time - lastDashTime >= dashCooldown && (grounded || allowAirDash))
@@ -388,7 +410,7 @@ namespace Abismo
             SetState(State.Dashing);
             lastDashTime = Time.time;
             Sfx.Play(SfxId.Dash);
-            Effects.Dust(transform.position, 6);
+            Effects.Dust(transform.position, 6, -facing);
         }
 
         void BeginSwing(int index)
@@ -414,6 +436,7 @@ namespace Abismo
 
             if (stateTimer >= attack.activeStart && stateTimer <= attack.activeEnd) DoAttackHit();
 
+            if (comboQueued && !attackIsAir && stateTimer >= comboCancelTime && TryStartExecution()) return;
             if (comboQueued && !attackIsAir && comboIndex < 2 && stateTimer >= comboCancelTime)
             {
                 BeginSwing(comboIndex + 1);
@@ -439,12 +462,20 @@ namespace Abismo
 
                 var result = target.TakeDamage(new DamageInfo(attack.damage, transform.position, attack.knockback, false, gameObject));
                 if (result == DamageResult.Ignored) continue;
+                if (result == DamageResult.Blocked)
+                {
+                    // La hoja rebota en el escudo: el jugador retrocede y pierde el combo.
+                    blockRecoilUntil = Time.time + 0.16f;
+                    comboQueued = false;
+                    GameFeel.HitStop(0.06f);
+                    continue;
+                }
 
                 stats.AddRevelation(revelationPerHit);
                 GameFeel.HitStop(attack.hitStop);
                 GameFeel.Shake(attack.shake);
-                Vector2 targetPos = target is Component c ? (Vector2)c.transform.position + Vector2.up * 0.9f : center;
-                Effects.HitSpark(Vector2.Lerp(center, targetPos, 0.5f));
+                Vector2 targetPos = target is Enemy e ? e.Center : target is Component c ? (Vector2)c.transform.position + Vector2.up * 0.9f : center;
+                Effects.HitSpark(Vector2.Lerp(center, targetPos, 0.7f), facing, attack.hitStop >= 0.08f);
             }
         }
 
@@ -458,17 +489,93 @@ namespace Abismo
         {
             if (parrySucceeded)
             {
-                // Tras una parada con éxito puedes contraatacar al instante.
+                // Tras una parada con éxito puedes contraatacar al instante (o ejecutar al aturdido).
                 if (Time.time - attackBufferedAt <= attackBufferTime)
                 {
                     attackBufferedAt = -10f;
-                    BeginSwing(0);
+                    if (!TryStartExecution()) BeginSwing(0);
                     return;
                 }
                 if (stateTimer >= 0.15f) SetState(State.Normal);
             }
             else if (stateTimer >= parryWindow + parryRecovery)
             {
+                SetState(State.Normal);
+            }
+        }
+
+        /// <summary>Enemigo aturdido más cercano al alcance (prefiere el que tienes delante).</summary>
+        Enemy FindExecutable()
+        {
+            Combat.OverlapBox((Vector2)transform.position + Vector2.up, new Vector2(executionRange * 2f, 2.4f), GameLayers.EnemyMask, executionResults);
+            Enemy best = null;
+            float bestScore = float.MaxValue;
+            foreach (var target in executionResults)
+            {
+                if (!(target is Enemy enemy) || !enemy.CanBeExecuted) continue;
+                float dx = enemy.transform.position.x - transform.position.x;
+                if (Mathf.Abs(enemy.transform.position.y - transform.position.y) > 1.2f) continue;
+                float score = Mathf.Abs(dx) + (Mathf.Sign(dx) == facing ? 0f : 1f);
+                if (score < bestScore)
+                {
+                    bestScore = score;
+                    best = enemy;
+                }
+            }
+            return best;
+        }
+
+        bool TryStartExecution()
+        {
+            if (!grounded) return false;
+            var target = FindExecutable();
+            if (target == null) return false;
+
+            float dx = target.transform.position.x - transform.position.x;
+            facing = dx >= 0f ? 1 : -1;
+            // Nos colocamos a la distancia justa para clavar el arma (si no hay una pared en medio).
+            Vector2 stand = new Vector2(target.transform.position.x - facing * executionStandOff, rb.position.y);
+            if (!Physics2D.OverlapBox(stand + body.offset, body.size * 0.9f, 0f, GameLayers.GroundMask))
+            {
+                rb.position = stand;
+                transform.position = stand;
+            }
+            rb.linearVelocity = Vector2.zero;
+
+            executionTarget = target;
+            executionStruck = false;
+            executionReleased = false;
+            target.BeginExecution();
+            SetState(State.Executing);
+            if (anim != null) anim.Play("execute", true);
+            Sfx.Play(SfxId.HeavySwing, 0.8f);
+            GameFeel.Shake(0.1f);
+            return true;
+        }
+
+        void UpdateExecution()
+        {
+            var target = executionTarget;
+            if (!executionStruck && stateTimer >= executionStrikeTime)
+            {
+                executionStruck = true;
+                if (target != null) target.ExecutionStrike(facing);
+                stats.AddRevelation(revelationPerExecution);
+                Sfx.Play(SfxId.Execute);
+                GameFeel.HitStop(0.2f);
+                GameFeel.Shake(0.7f);
+                CameraFX.Chromatic(0.7f);
+                CameraFX.Warp(-0.25f);
+            }
+            if (!executionReleased && stateTimer >= executionReleaseTime)
+            {
+                executionReleased = true;
+                if (target != null) target.FinishExecution(facing);
+                GameFeel.Shake(0.3f);
+            }
+            if (stateTimer >= executionDuration)
+            {
+                executionTarget = null;
                 SetState(State.Normal);
             }
         }
@@ -495,6 +602,7 @@ namespace Abismo
                     Vector2 origin = (Vector2)transform.position + new Vector2(0.8f * facing, 1.1f);
                     var spell = Instantiate(spellPrefab, origin, Quaternion.identity);
                     spell.Launch(new Vector2(facing, 0f), true);
+                    Effects.ElderSign(origin, 0.8f);
                     Sfx.Play(SfxId.Spell);
                     GameFeel.Shake(0.15f);
                 }
@@ -508,7 +616,7 @@ namespace Abismo
 
         public DamageResult TakeDamage(DamageInfo info)
         {
-            if (state == State.Dead) return DamageResult.Ignored;
+            if (state == State.Dead || state == State.Executing) return DamageResult.Ignored;
 
             if (state == State.Parrying && !parrySucceeded && stateTimer <= parryWindow && info.Parryable)
             {
@@ -524,6 +632,7 @@ namespace Abismo
                     GameFeel.Shake(0.35f);
                     CameraFX.Chromatic(0.4f);
                     if (flash != null) flash.Flash(new Color(0.7f, 1f, 0.95f), 0.25f);
+                    Effects.BlockSpark((Vector2)transform.position + new Vector2(0.7f * facing, 1.2f), facing);
                     Effects.Burst(AttackCenter(), new Color(0.8f, 1f, 0.95f), 12, 10f, 0.25f, 0f, 0.9f, true);
                     return DamageResult.Parried;
                 }
@@ -538,6 +647,7 @@ namespace Abismo
             Sfx.Play(SfxId.Hurt);
             if (flash != null) flash.Flash(Color.white, 0.15f);
             if (HUD.Instance != null) HUD.Instance.FlashDamage();
+            Effects.HurtStar(Center + Vector2.up * 0.2f);
             Effects.Blood(Center, new Color(0.55f, 0.05f, 0.08f), 8, Mathf.Sign(transform.position.x - info.SourcePosition.x));
 
             if (stats.Health <= 0)
@@ -603,6 +713,8 @@ namespace Abismo
             rb.linearVelocity = Vector2.zero;
             stats.RefillAll();
             SetState(State.Normal);
+            executionTarget = null;
+            ExecutionCandidate = null;
             invulnerableUntil = Time.time + 1.5f;
             lastSafePosition = position;
             hiddenByHazard = false;
@@ -665,6 +777,7 @@ namespace Abismo
                 case State.Dashing: return "dodge";
                 case State.Attacking: return CurrentAttack.animation;
                 case State.Parrying: return parrySucceeded ? "parry_success" : "parry";
+                case State.Executing: return "execute";
                 case State.Healing: return "heal";
                 case State.Casting: return "cast";
                 case State.Hurt: return "hurt";

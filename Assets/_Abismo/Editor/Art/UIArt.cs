@@ -36,7 +36,7 @@ namespace Abismo.EditorTools
             BarFill("ui_barra_fondo", new[] { "060507", "0b090c", "0e0b0f", "100d11", "130f14", "0a080b" }),
             BarFill("ui_barra_rastro", new[] { "8a7a50", "c8b27a", "e8d8a8", "e8d8a8", "f6ecc8", "b8a070" }),
             Flask(true), Flask(false), CoinIcon(), SmallFrame("ui_marco_oro", 24, 16, 6), SmallFrame("ui_aviso", 24, 16, 6),
-            PanelSprite(), Separator(), BossFrame(), Vignette(), Glyph("ui_signo"),
+            PanelSprite(), Separator(), BossFrame(), Vignette(), Glyph("ui_signo"), KeyCap(),
         };
 
         // ------------------------------------------------------------------
@@ -197,6 +197,27 @@ namespace Abismo.EditorTools
             Trefoil(c, 1, 1, 1, 1);
             Trefoil(c, w - 2, 1, -1, 1);
             return new UISprite { Name = name, Canvas = c, Border = new Vector4(border, border - 1, border, border - 1) };
+        }
+
+        /// <summary>Tecla de hueso con bisel (14×14) para el aviso "[E] Rezar"; la letra la pone el texto del HUD.</summary>
+        static UISprite KeyCap()
+        {
+            const int s = 14;
+            var c = new PixelCanvas(s, s);
+            var bone = C("d8cfb4");
+            var boneLight = C("f4eedb");
+            var boneDark = C("9a8f74");
+            var boneDeep = C("5e5644");
+            Fill(c, 1, 0, s - 2, s - 1, Ink);
+            Fill(c, 0, 1, s - 1, s - 2, Ink);
+            Fill(c, 1, 1, s - 2, s - 2, boneDeep);                 // canto inferior (la tecla "sobresale")
+            Fill(c, 1, 3, s - 2, s - 2, boneDark);
+            Fill(c, 2, 3, s - 3, s - 3, bone);
+            Fill(c, 2, s - 3, s - 3, s - 3, boneLight);            // luz arriba
+            Fill(c, 2, 4, 2, s - 3, boneLight);                    // luz a la izquierda
+            c.Set(1, s - 2, Ink);
+            c.Set(s - 2, s - 2, Ink);
+            return new UISprite { Name = "ui_tecla", Canvas = c, Border = new Vector4(4, 4, 4, 4) };
         }
 
         static UISprite PanelSprite()

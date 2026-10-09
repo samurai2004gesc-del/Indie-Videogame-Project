@@ -16,6 +16,7 @@ namespace Abismo
         bool lit;
 
         public override string Prompt => "Rezar ante el Signo Antiguo";
+        protected override float PromptHeight => 2.9f;
         public Vector2 RespawnPoint => transform.position;
 
         public override void Interact(PlayerController player)

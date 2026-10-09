@@ -76,7 +76,7 @@ namespace Abismo
             foreach (var target in results)
             {
                 if (alreadyHit.Contains(target)) continue;
-                var info = new DamageInfo(damage, pos - direction, 3f, !fromPlayer, gameObject);
+                var info = new DamageInfo(damage, pos - direction, 3f, !fromPlayer, gameObject) { Unblockable = fromPlayer };
                 var result = target.TakeDamage(info);
 
                 if (result == DamageResult.Parried)
@@ -116,6 +116,7 @@ namespace Abismo
         {
             Color c = spriteRenderer != null ? spriteRenderer.color : Color.white;
             Effects.Burst(transform.position, c, 8, 4f, 0.3f, 0f, 0.8f, true);
+            if (fromPlayer) Effects.Play("fx_signo", transform.position, direction.x, 0.6f);
             Destroy(gameObject);
         }
     }

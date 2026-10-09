@@ -36,6 +36,7 @@ namespace Abismo
         }
 
         protected override string IdleAnimation => "fly";
+        protected override bool Executable => false;
         protected override bool CanFlinch => ai != AI.Windup && ai != AI.Dive;
 
         void ChangeState(AI next)

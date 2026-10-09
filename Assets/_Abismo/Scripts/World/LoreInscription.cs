@@ -9,6 +9,7 @@ namespace Abismo
         [SerializeField] string prompt = "Leer la inscripción";
 
         public override string Prompt => prompt;
+        protected override float PromptHeight => 1.9f;
 
         public void Configure(string inscriptionText) => text = inscriptionText;
 

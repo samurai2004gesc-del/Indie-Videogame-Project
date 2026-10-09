@@ -9,6 +9,7 @@ namespace Abismo
         Ignored,  // no hubo daño (invulnerable, esquivando, ya muerto...)
         Hit,      // recibió el golpe
         Parried,  // el jugador paró el golpe
+        Blocked,  // un escudo detuvo el golpe (el atacante rebota)
         Killed    // el golpe lo mató
     }
 
@@ -20,6 +21,8 @@ namespace Abismo
         public float Knockback;
         public bool Parryable;
         public GameObject Source;
+        /// <summary>Atraviesa escudos (los conjuros).</summary>
+        public bool Unblockable;
 
         public DamageInfo(int amount, Vector2 sourcePosition, float knockback, bool parryable, GameObject source)
         {
@@ -28,6 +31,7 @@ namespace Abismo
             Knockback = knockback;
             Parryable = parryable;
             Source = source;
+            Unblockable = false;
         }
     }
 
@@ -53,6 +57,8 @@ namespace Abismo
     public interface IInteractable
     {
         string Prompt { get; }
+        /// <summary>Punto del mundo sobre el que flota el aviso de la tecla.</summary>
+        Vector2 PromptAnchor { get; }
         void Interact(PlayerController player);
     }
 

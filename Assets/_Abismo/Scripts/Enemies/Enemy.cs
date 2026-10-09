@@ -4,7 +4,8 @@ namespace Abismo
 {
     /// <summary>
     /// Base de todas las criaturas: vida, recibir golpes, retroceso, aturdimiento tras una
-    /// parada (los golpes hacen el doble de daño), animación de muerte con botín y reaparición en los altares.
+    /// parada (los golpes hacen el doble de daño y se las puede EJECUTAR, como en Blasphemous),
+    /// animación de muerte con botín y reaparición en los altares.
     /// Cada enemigo concreto hereda de aquí, escribe su inteligencia en <see cref="Tick"/> y elige
     /// su animación con <see cref="Animate"/> (el aturdimiento, el daño y la muerte tienen prioridad).
     /// </summary>
@@ -26,13 +27,18 @@ namespace Abismo
         [Tooltip("Lo que dura la animación de muerte antes de desaparecer.")]
         [SerializeField] protected float deathDuration = 0.8f;
         [SerializeField] protected bool respawns = true;
-        [SerializeField] protected Color ichorColor = new Color(0.3f, 0.85f, 0.55f);
+        [SerializeField] protected Color ichorColor = new Color(0.55f, 0.07f, 0.09f);
+        [Tooltip("Si se la puede rematar con una ejecución mientras está aturdida.")]
+        [SerializeField] protected bool executable = true;
 
         public string DisplayName => displayName;
         public int Health => health;
         public int MaxHealth => maxHealth;
         public bool IsDead { get; private set; }
         public bool IsStaggered => staggerTimer > 0f;
+        /// <summary>Aturdida, en el suelo y lista para que el jugador la remate.</summary>
+        public bool CanBeExecuted => Executable && IsStaggered && !IsDead && !beingExecuted;
+        public bool IsBeingExecuted => beingExecuted;
         public Vector2 Center => (Vector2)transform.position + centerOffset;
 
         protected Rigidbody2D rb;
@@ -50,6 +56,7 @@ namespace Abismo
         int spawnFacing;
         RigidbodyType2D spawnBodyType;
         float deathTimer;
+        bool beingExecuted;
 
         /// <summary>Lo usa el constructor automático; luego puedes ajustar los valores en el Inspector.</summary>
         public void ConfigureStats(string creatureName, int health, int gold, float knockbackResist, bool canRespawn)
@@ -100,7 +107,13 @@ namespace Abismo
                 return;
             }
 
-            if (staggerTimer > 0f)
+            if (beingExecuted)
+            {
+                // Inmóvil mientras el jugador la remata (el jugador decide cuándo muere).
+                SetHorizontalVelocity(0f);
+                if (anim != null) anim.Play("stagger");
+            }
+            else if (staggerTimer > 0f)
             {
                 staggerTimer -= dt;
                 SetHorizontalVelocity(0f);
@@ -123,6 +136,9 @@ namespace Abismo
         protected abstract void Tick(float dt);
 
         protected virtual string IdleAnimation => "idle";
+
+        /// <summary>Los jefes y las criaturas voladoras no se pueden ejecutar.</summary>
+        protected virtual bool Executable => executable;
 
         /// <summary>¿Se encoge al recibir un golpe? Mientras ataca no (superarmadura, como en Blasphemous).</summary>
         protected virtual bool CanFlinch => true;
@@ -187,12 +203,53 @@ namespace Abismo
         }
 
         // ------------------------------------------------------------------
+        // Ejecuciones
+        // ------------------------------------------------------------------
+
+        /// <summary>El jugador empieza a rematarla: se queda inmóvil y deja de ser golpeable.</summary>
+        public virtual void BeginExecution()
+        {
+            beingExecuted = true;
+            rb.linearVelocity = Vector2.zero;
+            if (flash != null) flash.ClearHold();
+        }
+
+        /// <summary>El arma entra: gran salpicadura y destello.</summary>
+        public virtual void ExecutionStrike(float direction)
+        {
+            if (flash != null) flash.Flash(Color.white, 0.2f);
+            Effects.Execution(Center, direction, ichorColor);
+            Sfx.Play(SfxId.HeavyHit);
+        }
+
+        /// <summary>El jugador arranca el arma: muere (con más botín que de costumbre).</summary>
+        public virtual void FinishExecution(float direction)
+        {
+            beingExecuted = false;
+            Effects.Blood(Center, ichorColor, 16, direction);
+            Die();
+            int bonus = goldReward / 2;
+            if (goldPrefab != null && bonus > 0) GoldPickup.SpawnBurst(goldPrefab, Center, bonus);
+        }
+
+        // ------------------------------------------------------------------
         // Daño, aturdimiento, muerte, reaparición
         // ------------------------------------------------------------------
 
+        /// <summary>¿Detiene este golpe (escudo)? Por defecto nadie bloquea.</summary>
+        protected virtual bool TryBlock(DamageInfo info) => false;
+
+        /// <summary>Lo que pasa al bloquear (efectos, animación). Lo llama TakeDamage.</summary>
+        protected virtual void OnBlocked(DamageInfo info) { }
+
         public virtual DamageResult TakeDamage(DamageInfo info)
         {
-            if (IsDead) return DamageResult.Ignored;
+            if (IsDead || beingExecuted) return DamageResult.Ignored;
+            if (!info.Unblockable && !IsStaggered && TryBlock(info))
+            {
+                OnBlocked(info);
+                return DamageResult.Blocked;
+            }
 
             bool critical = IsStaggered;
             health -= critical ? info.Amount * 2 : info.Amount;
@@ -208,7 +265,7 @@ namespace Abismo
                 knockbackUntil = Time.time + 0.15f;
             }
 
-            Effects.Blood(Center, ichorColor, critical ? 18 : 9, dir);
+            Effects.Blood(Center + new Vector2(-dir * 0.2f, 0f), ichorColor, critical ? 18 : 9, dir);
             Sfx.Play(critical ? SfxId.HeavyHit : SfxId.Hit);
             OnHurt(info);
 
@@ -265,6 +322,7 @@ namespace Abismo
             rb.linearVelocity = Vector2.zero;
             health = maxHealth;
             IsDead = false;
+            beingExecuted = false;
             staggerTimer = 0f;
             knockbackUntil = 0f;
             hurtAnimUntil = 0f;

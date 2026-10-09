@@ -7,7 +7,7 @@ namespace Abismo
     {
         Swing, HeavySwing, Hit, HeavyHit, Hurt, Jump, Land, Dash, ParryStance, Parry,
         SpellCharge, Spell, Heal, Pickup, EnemySwing, EnemyDie, Chant, Altar, Roar,
-        Death, Gate, Tentacle, Fragment, Message
+        Death, Gate, Tentacle, Fragment, Message, Block, Execute
     }
 
     /// <summary>
@@ -110,6 +110,12 @@ namespace Abismo
             Add(SfxId.Tentacle, Mix(Whoosh(0.35f, 2000f, 300f, 0.08f), Thump(0.35f, 100f, 35f, 0.12f), 1f), 0.8f);
             Add(SfxId.Fragment, Arpeggio(1f, new[] { 523.3f, 659.3f, 784f, 1046.5f }, 0.12f, 0.4f), 0.5f);
             Add(SfxId.Message, Metallic(0.8f, 660f, new[] { 1f, 1.5f }, new[] { 0.35f, 0.2f }), 0.35f);
+            // Golpe contra la concha del Guardián: chasquido seco y hueco, sin el brillo metálico de la parada.
+            Add(SfxId.Block, Mix(Metallic(0.35f, 520f, new[] { 1f, 1.47f, 2.9f }, new[] { 0.12f, 0.08f, 0.04f }),
+                                 Thump(0.25f, 200f, 70f, 0.05f), 1.2f), 0.75f);
+            // Ejecución: desgarro grave + golpe sordo largo.
+            Add(SfxId.Execute, Mix(Mix(NoiseBurst(0.35f, 1800f, 0.12f), Thump(0.6f, 95f, 28f, 0.2f), 1.4f),
+                                   Growl(0.7f, 500f, 20f, 90f, 30f, 0.02f, 0.3f), 0.5f), 1f);
         }
 
         void Add(SfxId id, float[] data, float gain)

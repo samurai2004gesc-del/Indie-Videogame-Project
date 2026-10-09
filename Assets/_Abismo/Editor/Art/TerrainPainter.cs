@@ -10,7 +10,8 @@ namespace Abismo.EditorTools
     public sealed class TerrainTheme
     {
         public Color32[] Stone;     // sillería (oscuro → claro)
-        public Color32[] Slab;      // losas del suelo
+        public Color32[] Cobble;    // adoquines del camino (oscuro → claro), el ocre de Blasphemous
+        public Color32[] Earth;     // tierra y cascotes bajo los adoquines
         public Color32[] Moss;      // musgo / algas
         public Color32 Deep;        // color al que se funde la roca en profundidad
         public Color32 Accent;      // detalle (oro, coral, runas)
@@ -37,30 +38,34 @@ namespace Abismo.EditorTools
                 case Zone.Ruins:
                     return new TerrainTheme
                     {
-                        Stone = Ramp.Make("34433b", 6, 0.1f, 0.25f, 1.6f), Slab = Ramp.Make("46574c", 6, 0.1f, 0.3f, 1.55f),
-                        Moss = Ramp.Make("355e45", 4, 0.1f), Deep = PixelCanvas.Hex("060a09"), Accent = PixelCanvas.Hex("4fd6a4"),
-                        MossAmount = 0.55f, GlowingGlyphs = true,
+                        Stone = Ramp.Make("4a5446", 6, 0.1f, 0.25f, 1.6f),
+                        Cobble = Ramp.Make("98925a", 6, 0.12f, 0.24f, 1.5f), Earth = Ramp.Make("2c2a22", 4, 0.08f, 0.5f, 1.5f),
+                        Moss = Ramp.Make("355e45", 4, 0.1f), Deep = PixelCanvas.Hex("0a0c09"), Accent = PixelCanvas.Hex("4fd6a4"),
+                        MossAmount = 0.4f, GlowingGlyphs = true,
                     };
                 case Zone.Sanctuary:
                     return new TerrainTheme
                     {
-                        Stone = Ramp.Make("4a3f35", 6, 0.1f, 0.25f, 1.6f), Slab = Ramp.Make("5e5144", 6, 0.1f, 0.3f, 1.55f),
-                        Moss = Ramp.Make("3d4a30", 4, 0.08f), Deep = PixelCanvas.Hex("0b0807"), Accent = PixelCanvas.Hex("c9a14f"),
-                        MossAmount = 0.12f, AccentInlays = true,
+                        Stone = Ramp.Make("4a3c30", 6, 0.1f, 0.25f, 1.6f),
+                        Cobble = Ramp.Make("c19a4c", 6, 0.12f, 0.22f, 1.45f), Earth = Ramp.Make("33241c", 4, 0.08f, 0.5f, 1.5f),
+                        Moss = Ramp.Make("3d4a30", 4, 0.08f), Deep = PixelCanvas.Hex("0e0907"), Accent = PixelCanvas.Hex("c9a14f"),
+                        MossAmount = 0.08f, AccentInlays = true,
                     };
                 case Zone.Reef:
                     return new TerrainTheme
                     {
-                        Stone = Ramp.Make("2f3138", 6, 0.1f, 0.25f, 1.6f), Slab = Ramp.Make("3d3f48", 6, 0.1f, 0.3f, 1.55f),
-                        Moss = Ramp.Make("6a3a4a", 4, 0.08f), Deep = PixelCanvas.Hex("07070a"), Accent = PixelCanvas.Hex("d97a8a"),
-                        MossAmount = 0.35f, AccentInlays = true,
+                        Stone = Ramp.Make("332e3a", 6, 0.1f, 0.25f, 1.6f),
+                        Cobble = Ramp.Make("7d7a88", 6, 0.12f, 0.24f, 1.5f), Earth = Ramp.Make("221e28", 4, 0.08f, 0.5f, 1.5f),
+                        Moss = Ramp.Make("6a3a4a", 4, 0.08f), Deep = PixelCanvas.Hex("0a080d"), Accent = PixelCanvas.Hex("d97a8a"),
+                        MossAmount = 0.3f, AccentInlays = true,
                     };
                 default:
                     return new TerrainTheme
                     {
-                        Stone = Ramp.Make("3b474b", 6, 0.1f, 0.25f, 1.6f), Slab = Ramp.Make("505d5f", 6, 0.1f, 0.3f, 1.55f),
-                        Moss = Ramp.Make("3a6a50", 4, 0.1f), Deep = PixelCanvas.Hex("07090b"), Accent = PixelCanvas.Hex("8fb3a0"),
-                        MossAmount = 0.75f,
+                        Stone = Ramp.Make("3e3a36", 6, 0.1f, 0.25f, 1.6f),
+                        Cobble = Ramp.Make("b08d52", 6, 0.12f, 0.22f, 1.48f), Earth = Ramp.Make("2e2620", 4, 0.08f, 0.5f, 1.5f),
+                        Moss = Ramp.Make("3a6a50", 4, 0.1f), Deep = PixelCanvas.Hex("0c0a0a"), Accent = PixelCanvas.Hex("8fb3a0"),
+                        MossAmount = 0.35f,
                     };
             }
         }
@@ -76,7 +81,7 @@ namespace Abismo.EditorTools
 
     /// <summary>
     /// Pinta el terreno de un nivel como una ilustración continua en lugar de baldosas repetidas:
-    ///  - suelo de losas irregulares con grietas y bordes iluminados (como las catedrales de Blasphemous),
+    ///  - camino de adoquines ocres con el canto iluminado y tierra con cascotes debajo (como en Blasphemous),
     ///  - sillería ciclópea que se funde en negro hacia el interior de la roca,
     ///  - musgo y algas que cuelgan, estalactitas y goteos en los techos,
     ///  - paredes de fondo con columnas, arcos y nichos.
@@ -185,12 +190,12 @@ namespace Abismo.EditorTools
                     int depth = dist[i];
                     float hgt;
                     Color32 c;
-                    if (up <= 13 && up <= side + 3) c = Slab(theme, wx, wy, up, out hgt);
+                    if (up <= 26 && up <= side + 4) c = Cobble(theme, wx, wy, up, out hgt);
                     else if (down <= 10 && down < side) c = Ceiling(theme, wx, wy, down, out hgt);
                     else c = Masonry(theme, wx, wy, depth, side < up && side < down, out hgt);
 
                     // Se funde en negro con la profundidad (la roca "se pierde" en la oscuridad).
-                    float fade = Mathf.Clamp01((depth - 8f) / 56f);
+                    float fade = Mathf.Clamp01((depth - 16f) / 44f);
                     fade = fade * fade * (3f - 2f * fade);
                     c = PixelCanvas.Lerp(c, theme.Deep, fade * 0.95f);
                     color.Pixels[y * w + x] = c;
@@ -247,65 +252,93 @@ namespace Abismo.EditorTools
             return d;
         }
 
-        /// <summary>Losas del suelo: anchos irregulares, borde superior iluminado, juntas y grietas.</summary>
-        static Color32 Slab(TerrainTheme t, int wx, int wy, int depthFromTop, out float height)
+        /// <summary>
+        /// Camino de adoquines como en Blasphemous: tres hileras de piedras redondeadas ocres, cada una más hundida y
+        /// oscura que la anterior, con el canto superior muy iluminado, juntas oscuras, alguna piedra hundida que rompe
+        /// la línea del suelo y, debajo, tierra con cascotes y algún hueso.
+        /// </summary>
+        static Color32 Cobble(TerrainTheme t, int wx, int wy, int depthFromTop, out float height)
         {
-            int surfaceY = wy + depthFromTop; // fila del borde superior
-            int slab = SlabIndex(wx, surfaceY, out int posInSlab, out int slabWidth);
-            float tone = PixelCanvas.Hash(slab, surfaceY, 5);
-            int thickness = 9 + Mathf.FloorToInt(PixelCanvas.Hash(slab, surfaceY, 6) * 4f);
-            int sink = PixelCanvas.Hash(slab, surfaceY, 7) > 0.8f ? 1 : 0; // alguna losa algo hundida
-            int d = depthFromTop - sink;
-            height = 1f;
-            var ramp = t.Slab;
-
-            if (d < 0) { height = 0.2f; return ramp[0]; }
-            bool joint = posInSlab == 0;
-            if (joint || d >= thickness)
+            int surfaceY = wy + depthFromTop;
+            var ramp = t.Cobble;
+            var mortar = PixelCanvas.Lerp(ramp[0], t.Deep, 0.4f);
+            if (depthFromTop < CobbleRows[0] + CobbleRows[1] + CobbleRows[2])
             {
-                height = 0f;
-                return d >= thickness && d < thickness + 1 ? ramp[0] : PixelCanvas.Lerp(ramp[0], t.Deep, 0.4f);
-            }
-            int idx;
-            if (d == 0) idx = 5;
-            else if (d == 1) idx = 4;
-            else idx = 3 - (d > thickness - 3 ? 1 : 0);
-            if (posInSlab == 1) idx = Mathf.Max(1, idx - 1);
-            if (posInSlab == slabWidth - 1) idx = Mathf.Min(5, idx + (d < 2 ? 0 : 1));
-            if (tone > 0.7f) idx = Mathf.Min(5, idx + (d > 1 ? 1 : 0));
-            else if (tone < 0.25f) idx = Mathf.Max(1, idx - 1);
-
-            // Grieta diagonal dentro de algunas losas.
-            if (PixelCanvas.Hash(slab, surfaceY, 9) > 0.62f)
-            {
-                int crackX = Mathf.FloorToInt(PixelCanvas.Hash(slab, surfaceY, 10) * (slabWidth - 4)) + 2;
-                if (posInSlab == crackX + (d / 2) * (PixelCanvas.Hash(slab, 0, 11) > 0.5f ? 1 : -1) && d > 0)
+                int row = 0, top = 0;
+                while (depthFromTop >= top + CobbleRows[row]) { top += CobbleRows[row]; row++; }
+                int rowH = CobbleRows[row];
+                int stone = StoneIndex(wx + row * 5, surfaceY * 3 + row, 8 - row, 6, out int pos, out int width);
+                float tone = PixelCanvas.Hash(stone, surfaceY + row, 61);
+                // Algunas piedras están hundidas un píxel (la línea del suelo no es una regla).
+                int sink = PixelCanvas.Hash(stone, surfaceY + row, 66) > 0.72f ? 1 : 0;
+                int localD = depthFromTop - top - sink;
+                bool corner = (localD <= 0 || localD >= rowH - 1) && (pos <= 1 || pos >= width - 1);
+                if (pos == 0 || localD < 0 || corner)
                 {
-                    height = 0.35f;
-                    return ramp[1];
+                    height = 0f;
+                    return localD < 0 && row == 0 ? PixelCanvas.Lerp(ramp[1], t.Deep, 0.2f) : mortar;
+                }
+                float u = (pos - width * 0.5f) / (width * 0.5f);
+                float v = (localD - rowH * 0.45f) / (rowH * 0.55f);
+                height = Mathf.Clamp01(1f - (u * u + v * v) * 0.6f);
+                int idx;
+                if (localD == 0) idx = 5;
+                else if (localD == 1) idx = 4;
+                else if (localD == rowH - 1) idx = 1;
+                else if (localD == rowH - 2) idx = 2;
+                else idx = 3;
+                if (pos == 1 && localD > 0 && localD < rowH - 1) idx = Mathf.Min(5, idx + 1);       // canto izquierdo, iluminado
+                if (pos >= width - 2 && localD > 0) idx = Mathf.Max(1, idx - 1);                    // canto derecho, en sombra
+                if (tone > 0.75f) idx = Mathf.Min(5, idx + (localD > 0 ? 1 : 0));
+                else if (tone < 0.25f) idx = Mathf.Max(1, idx - 1);
+                idx -= row + sink;                                                                  // hileras de abajo, hundidas
+                // Desgaste: algún píxel picado en el centro de la piedra.
+                if (localD > 1 && localD < rowH - 2 && PixelCanvas.Hash(wx, wy, 67) > 0.93f) idx--;
+                // Musgo o verdín en algunas piedras.
+                if (t.MossAmount > 0.2f && localD <= 1 && PixelCanvas.Hash(stone, 7 + row, 62) < t.MossAmount * 0.3f && (pos + localD) % 2 == 0)
+                    return t.Moss[Mathf.Clamp(2 + localD - row, 0, t.Moss.Length - 1)];
+                return ramp[Mathf.Clamp(idx, 0, ramp.Length - 1)];
+            }
+            // Tierra oscura con cascotes y huesos.
+            height = 0.3f;
+            int d = depthFromTop - CobbleRows[0] - CobbleRows[1] - CobbleRows[2];
+            float n = PixelCanvas.ValueNoise(wx / 4f, wy / 3f, 0, 63);
+            var earth = t.Earth;
+            if (d == 0) return mortar;
+            int e = d < 3 ? 2 : n > 0.6f ? 2 : n > 0.35f ? 1 : 0;
+            // Cascotes: piedras sueltas de 3-5 px con su luz arriba.
+            int cellX = FloorDiv(wx, 6), cellY = FloorDiv(wy, 5);
+            if (d > 2 && PixelCanvas.Hash(cellX, cellY, 64) > 0.8f)
+            {
+                int lx = wx - cellX * 6, ly = wy - cellY * 5;
+                if (lx >= 1 && lx <= 4 && ly >= 1 && ly <= 3 && !((lx == 1 || lx == 4) && (ly == 1 || ly == 3)))
+                {
+                    height = 0.8f;
+                    return PixelCanvas.Lerp(ly == 3 ? ramp[2] : ramp[1], earth[3], 0.45f);
                 }
             }
-            // Incrustaciones (oro en el santuario, coral en el arrecife).
-            if (t.AccentInlays && d == 3 && slab % 5 == 0 && posInSlab > 2 && posInSlab < slabWidth - 3 && (posInSlab % 3) == 1)
-                return PixelCanvas.Lerp(t.Accent, ramp[3], 0.35f);
-            return ramp[Mathf.Clamp(idx, 0, ramp.Length - 1)];
+            if (PixelCanvas.Hash(wx / 7, wy / 3, 65) > 0.985f && d > 3) return PixelCanvas.Hex("8a8270"); // hueso
+            return earth[e];
         }
 
-        static int SlabIndex(int wx, int surfaceY, out int posInSlab, out int slabWidth)
+        /// <summary>Alto (px) de cada hilera de adoquines, de arriba abajo.</summary>
+        static readonly int[] CobbleRows = { 6, 5, 5 };
+
+        /// <summary>Divide una fila en piedras de anchura minW..minW+rangeW-1.</summary>
+        static int StoneIndex(int wx, int key, int minW, int rangeW, out int posInStone, out int stoneWidth)
         {
-            // Recorremos losas de ancho 10-24 px desde un origen desplazado según la altura de la superficie.
-            int shift = Mathf.FloorToInt(PixelCanvas.Hash(surfaceY, 1, 3) * 40f);
+            int shift = Mathf.FloorToInt(PixelCanvas.Hash(key, 1, 3) * 40f);
             int x = wx + shift;
             int block = FloorDiv(x, 256);
             int start = block * 256;
             int index = block * 64;
             while (true)
             {
-                int width = 10 + Mathf.FloorToInt(PixelCanvas.Hash(index, surfaceY, 4) * 15f);
+                int width = minW + Mathf.FloorToInt(PixelCanvas.Hash(index, key, 4) * rangeW);
                 if (x < start + width)
                 {
-                    posInSlab = x - start;
-                    slabWidth = width;
+                    posInStone = x - start;
+                    stoneWidth = width;
                     return index;
                 }
                 start += width;
@@ -501,7 +534,7 @@ namespace Abismo.EditorTools
 
                     Color32 c = Architecture(theme, zone, wx, wy, localY, spanH, out float hgt);
                     // Oscuro y algo más apagado arriba: la luz viene del suelo (velas).
-                    float k = 0.42f - 0.18f * Mathf.Clamp01(localY / (float)Mathf.Max(1, spanH));
+                    float k = 0.8f - 0.26f * Mathf.Clamp01(localY / (float)Mathf.Max(1, spanH));
                     c = PixelCanvas.Lerp(theme.Deep, c, k);
                     color.Pixels[y * w + x] = c;
                     height[y * w + x] = hgt;
@@ -511,9 +544,54 @@ namespace Abismo.EditorTools
             return new TerrainChunk { TileX = tileX, TileY = tileY, TilesW = tilesW, TilesH = tilesH, Color = color, Normal = normal };
         }
 
+        const int Bay = 256;          // una columna cada 8 casillas; un arco entre cada dos
+        const float ArchHalfW = 72f;
+
+        static float ArchTop(int spanH) => Mathf.Min(spanH - 24f, 200f);
+
+        /// <summary>Un arco del muro de fondo con sitio para una vidriera.</summary>
+        public struct ArchSlot
+        {
+            public int X;       // px de mundo: eje del arco
+            public int FloorY;  // px de mundo: suelo del hueco
+            public int Top;     // px sobre el suelo donde cierra el arco
+            public int Span;    // px de alto del hueco (de suelo a techo)
+            public Zone Zone;
+        }
+
+        /// <summary>
+        /// Arcos completos (mismo suelo y techo a lo ancho de la vidriera) del muro de fondo: el constructor coloca en
+        /// ellos vidrieras que brillan y sus rayos de luz.
+        /// </summary>
+        public static List<ArchSlot> ArchSlots(System.Func<int, int, bool> back, int tilesW, int tilesH, System.Func<int, Zone> zoneAtTile)
+        {
+            var slots = new List<ArchSlot>();
+            int tilesPerBay = Bay / Tile;
+            for (int bay = 0; bay * tilesPerBay < tilesW; bay++)
+            {
+                int axis = bay * Bay + Bay / 2, tx = axis / Tile;
+                for (int ty = 0; ty < tilesH; ty++)
+                {
+                    if (!back(tx, ty) || back(tx, ty - 1)) continue; // buscamos el suelo de cada hueco
+                    int top = ty;
+                    while (top + 1 < tilesH && back(tx, top + 1)) top++;
+                    bool whole = true;
+                    for (int dx = -2; dx <= 1 && whole; dx++)
+                    {
+                        int x = tx + dx;
+                        if (!back(x, ty) || back(x, ty - 1) || !back(x, top) || (top + 1 < tilesH && back(x, top + 1))) whole = false;
+                    }
+                    int spanH = (top - ty + 1) * Tile;
+                    if (whole && ArchTop(spanH) > 150f)
+                        slots.Add(new ArchSlot { X = axis, FloorY = ty * Tile, Top = Mathf.RoundToInt(ArchTop(spanH)), Span = spanH, Zone = zoneAtTile(tx) });
+                    ty = top;
+                }
+            }
+            return slots;
+        }
+
         static Color32 Architecture(TerrainTheme t, Zone zone, int wx, int wy, int localY, int spanH, out float height)
         {
-            const int Bay = 256;              // una columna cada 8 casillas
             int bay = FloorDiv(wx, Bay);
             int bx = wx - bay * Bay;          // 0..255 dentro del tramo
             int columnW = zone == Zone.Ruins ? 52 : 44;
@@ -540,8 +618,8 @@ namespace Abismo.EditorTools
             }
 
             // Arco ojival entre columnas, con un nicho oscuro.
-            float archHalfW = 72f;
-            float archTop = Mathf.Min(spanH - 24f, 200f);
+            float archHalfW = ArchHalfW;
+            float archTop = ArchTop(spanH);
             float dx = Mathf.Abs(bx - center);
             if (archTop > 40f && dx < archHalfW + 6f && localY > 10)
             {
@@ -574,10 +652,9 @@ namespace Abismo.EditorTools
                         return ramp[3];
                     }
                     height = 0.05f;
-                    // Fondo del nicho: muy oscuro, con una ventana tenue en el santuario.
-                    if (zone == Zone.Sanctuary && dx < 10f && localY > springY - 20f && localY < archTop - 18f)
-                        return PixelCanvas.Lerp(t.Deep, t.Accent, 0.12f);
-                    return PixelCanvas.Lerp(t.Deep, ramp[0], 0.5f);
+                    // Fondo del nicho: oscuro (ahí van las vidrieras, ver ArchSlots), con sillares apenas insinuados.
+                    var niche = Masonry(t, wx, wy, 99, false, out _);
+                    return PixelCanvas.Lerp(t.Deep, PixelCanvas.Lerp(ramp[0], niche, 0.3f), 0.55f);
                 }
             }
 

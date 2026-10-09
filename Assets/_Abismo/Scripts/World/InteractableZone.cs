@@ -12,6 +12,10 @@ namespace Abismo
         public abstract string Prompt { get; }
         public abstract void Interact(PlayerController player);
 
+        /// <summary>Altura (unidades) sobre el pivote a la que flota el aviso "[E] ...".</summary>
+        protected virtual float PromptHeight => 2.4f;
+        public Vector2 PromptAnchor => (Vector2)transform.position + Vector2.up * PromptHeight;
+
         protected virtual void Reset()
         {
             GetComponent<Collider2D>().isTrigger = true;

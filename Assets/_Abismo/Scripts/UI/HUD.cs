@@ -29,6 +29,8 @@ namespace Abismo
         public Sprite separatorSprite;
         public Sprite bossFrameSprite;
         public Sprite promptSprite;
+        [Tooltip("Tecla del aviso que flota sobre altares, inscripciones y enemigos aturdidos.")]
+        public Sprite keySprite;
         public Sprite vignetteSprite;
         public Sprite signSprite;
 
@@ -55,8 +57,9 @@ namespace Abismo
         int shownGold = -1;
 
         CanvasGroup promptGroup;
-        Text promptText;
-        RectTransform promptFrame;
+        Text promptText, promptKey;
+        RectTransform promptFrame, canvasRect;
+        Vector2 promptWorld;
 
         CanvasGroup areaGroup, messageGroup, bannerGroup;
         Text areaText, messageText, bannerTitle, bannerSubtitle;
@@ -182,14 +185,20 @@ namespace Abismo
                     goldText.text = shownGold.ToString();
                 }
 
+                // Aviso con la tecla flotando sobre lo que se puede usar (o sobre el enemigo que se puede ejecutar).
                 var interactable = player.CurrentInteractable;
-                bool showPrompt = interactable != null && !IsReading && !player.IsDead && titleTarget <= 0f;
-                if (interactable != null)
+                var execution = player.ExecutionCandidate;
+                bool showPrompt = (interactable != null || execution != null) && !IsReading && !player.IsDead && titleTarget <= 0f;
+                if (execution != null)
                 {
-                    promptText.text = "E   " + interactable.Prompt;
-                    promptFrame.sizeDelta = new Vector2(Mathf.Ceil(promptText.preferredWidth) + 24f, 18f);
+                    SetPrompt("J", "Ejecutar", execution.Center + Vector2.up * 1.5f, true);
                 }
-                promptGroup.alpha = Mathf.MoveTowards(promptGroup.alpha, showPrompt ? 1f : 0f, dt * 6f);
+                else if (interactable != null)
+                {
+                    SetPrompt("E", interactable.Prompt, interactable.PromptAnchor, false);
+                }
+                promptGroup.alpha = Mathf.MoveTowards(promptGroup.alpha, showPrompt ? 1f : 0f, dt * 8f);
+                if (promptGroup.alpha > 0f) PlacePrompt();
 
                 // Poca vida: la viñeta del post-procesado late en rojo.
                 CameraFX.SetDanger(hp < 0.3f && !player.IsDead ? 1f - hp / 0.3f * 0.6f : 0f);
@@ -200,7 +209,7 @@ namespace Abismo
 
             areaGroup.alpha = TimedAlpha(ref areaTimer, dt, 0.8f, 2.6f, 1.2f);
             messageGroup.alpha = TimedAlpha(ref messageTimer, dt, 0.3f, 3.2f, 0.8f);
-            bannerGroup.alpha = TimedAlpha(ref bannerTimer, dt, 1f, 3.5f, 1.5f);
+            bannerGroup.alpha = TimedAlpha(ref bannerTimer, dt, 1f, 4.5f, 1.8f);
 
             Approach(readingGroup, readingTarget, dt * 6f);
             Approach(pauseGroup, pauseTarget, dt * 8f);
@@ -254,6 +263,32 @@ namespace Abismo
             }
         }
 
+        void SetPrompt(string key, string label, Vector2 worldAnchor, bool urgent)
+        {
+            promptKey.text = key;
+            promptText.text = label;
+            promptWorld = worldAnchor;
+            float width = Mathf.Ceil(promptText.preferredWidth);
+            promptText.rectTransform.sizeDelta = new Vector2(width, 14f);
+            promptFrame.sizeDelta = new Vector2(width + 32f, 20f);
+            float pulse = urgent ? 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 10f) : 0f;
+            promptText.color = urgent ? Color.Lerp(new Color(0.95f, 0.45f, 0.35f), GoldColor, pulse) : TitleColor;
+        }
+
+        /// <summary>Lleva el aviso a la posición en pantalla de su punto del mundo (con un leve vaivén).</summary>
+        void PlacePrompt()
+        {
+            var cam = Camera.main;
+            if (cam == null || canvasRect == null) return;
+            Vector3 viewport = cam.WorldToViewportPoint(promptWorld);
+            Vector2 size = canvasRect.rect.size;
+            float bob = Mathf.Round(Mathf.Sin(Time.unscaledTime * 3f) * 1.5f);
+            var rt = (RectTransform)promptGroup.transform;
+            float half = promptFrame.sizeDelta.x * 0.5f + 4f;
+            rt.anchoredPosition = new Vector2(Mathf.Round(Mathf.Clamp(viewport.x * size.x, half, size.x - half)),
+                                              Mathf.Round(Mathf.Clamp(viewport.y * size.y, 30f, size.y - 70f) + bob));
+        }
+
         static float TimedAlpha(ref float timer, float dt, float fadeIn, float hold, float fadeOut)
         {
             if (timer < 0f) return 0f;
@@ -295,6 +330,7 @@ namespace Abismo
             scaler.matchWidthOrHeight = 1f;
             scaler.referencePixelsPerUnit = 100f;
             Transform root = canvasGO.transform;
+            canvasRect = (RectTransform)root;
 
             // Viñeta y destello de daño (debajo de todo lo demás).
             if (vignetteSprite != null)
@@ -329,13 +365,18 @@ namespace Abismo
             bannerGroup = NewGroup("Estandarte", root);
             Stretch((RectTransform)bannerGroup.transform);
             var bannerBack = NewImage("Fondo", bannerGroup.transform, new Color(0f, 0f, 0f, 0.65f));
-            Place(bannerBack.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 8f), new Vector2(RefWidth + 40f, 74f));
-            AddSeparator(bannerGroup.transform, 40f);
-            AddSeparator(bannerGroup.transform, -24f);
-            bannerTitle = NewText("Titulo", bannerGroup.transform, "", titleFont, TitleSize, TextAnchor.MiddleCenter, GoldColor);
-            Place(bannerTitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 16f), new Vector2(600f, 32f));
+            Place(bannerBack.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 6f), new Vector2(RefWidth * 2f, 84f));
+            AddSeparator(bannerGroup.transform, 44f);
+            AddSeparator(bannerGroup.transform, -30f);
+            if (signSprite != null)
+            {
+                var emblem = NewImage("Signo", bannerGroup.transform, new Color(0.95f, 0.8f, 0.42f, 0.9f), signSprite);
+                Place(emblem.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 62f), new Vector2(32f, 32f));
+            }
+            bannerTitle = NewText("Titulo", bannerGroup.transform, "", titleFont, TitleSize * 2, TextAnchor.MiddleCenter, GoldColor);
+            Place(bannerTitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 12f), new Vector2(640f, 50f));
             bannerSubtitle = NewText("Subtitulo", bannerGroup.transform, "", textFont, TextSize, TextAnchor.MiddleCenter, TextColor);
-            Place(bannerSubtitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -8f), new Vector2(600f, 16f));
+            Place(bannerSubtitle.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, -14f), new Vector2(600f, 16f));
             bannerGroup.alpha = 0f;
 
             BuildBossBar(root);
@@ -383,15 +424,21 @@ namespace Abismo
             Place(goldText.rectTransform, new Vector2(1f, 0.5f), new Vector2(1f, 0.5f), new Vector2(-6f, 0f), new Vector2(54f, 14f));
         }
 
+        /// <summary>Aviso "[tecla] acción" que flota en el mundo (ver PlacePrompt).</summary>
         void BuildPrompt(Transform root)
         {
             promptGroup = NewGroup("Aviso", root);
-            Place((RectTransform)promptGroup.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, 46f), new Vector2(300f, 18f));
+            Place((RectTransform)promptGroup.transform, Vector2.zero, new Vector2(0.5f, 0f), new Vector2(320f, 46f), new Vector2(1f, 20f));
             var frame = NewImage("Marco", promptGroup.transform, promptSprite != null ? Color.white : new Color(0f, 0f, 0f, 0.6f), promptSprite, true);
             promptFrame = frame.rectTransform;
-            Place(promptFrame, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(160f, 18f));
-            promptText = NewText("Texto", promptGroup.transform, "", textFont, TextSize, TextAnchor.MiddleCenter, TitleColor);
-            Stretch(promptText.rectTransform);
+            Place(promptFrame, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), Vector2.zero, new Vector2(160f, 20f));
+            var key = NewImage("Tecla", promptFrame, keySprite != null ? Color.white : new Color(0.85f, 0.75f, 0.5f), keySprite, true);
+            Place(key.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(4f, 0f), new Vector2(14f, 14f));
+            promptKey = NewText("Letra", key.transform, "E", textFont, TextSize, TextAnchor.MiddleCenter, new Color(0.12f, 0.1f, 0.08f));
+            Place(promptKey.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(0f, 1f), new Vector2(14f, 14f));
+            promptKey.GetComponent<Shadow>().enabled = false;
+            promptText = NewText("Texto", promptFrame, "", textFont, TextSize, TextAnchor.MiddleLeft, TitleColor);
+            Place(promptText.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(23f, 0f), new Vector2(120f, 14f));
             promptGroup.alpha = 0f;
         }
 

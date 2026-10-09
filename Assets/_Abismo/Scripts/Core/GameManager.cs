@@ -200,7 +200,7 @@ namespace Abismo
             if (hud != null)
             {
                 hud.HideBossBar();
-                hud.ShowBanner(boss.DisplayName.ToUpperInvariant(), "HA REGRESADO AL SUEÑO");
+                hud.ShowBanner("Requiescat in Profundis", boss.DisplayName + " ha regresado al Sueño");
             }
         }
 

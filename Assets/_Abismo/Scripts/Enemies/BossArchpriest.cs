@@ -48,6 +48,7 @@ namespace Abismo
         }
 
         protected override bool CanFlinch => false;
+        protected override bool Executable => false;
 
         static string AnimationFor(Phase phase, bool walking)
         {
