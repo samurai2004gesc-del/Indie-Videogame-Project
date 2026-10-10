@@ -29,8 +29,17 @@ namespace Abismo.EditorTools
         // Materiales
         // ------------------------------------------------------------------
 
-        static readonly PixelMaterial Sclera = new PixelMaterial(Ramp.Make("d3c59c", 5, 0.12f, 0.3f, 1.32f)) { Gloss = 0.6f, Rim = 0.55f, Ambient = 0.22f, Dither = 0.03f };
-        static readonly PixelMaterial Flesh = new PixelMaterial(Ramp.Make("5b3c5c", 5, 0.1f, 0.32f, 1.6f)) { Rim = 0.65f, Ambient = 0.24f, Dither = 0.04f };
+        static readonly PixelMaterial Sclera = new PixelMaterial(Ramp.Make("d3c59c", 5, 0.12f, 0.3f, 1.32f))
+        {
+            Gloss = 0.6f, Rim = 0.55f, Ambient = 0.22f, Dither = 0f, BandDither = 0.14f, SpecularAt = 0.82f, Specular = PixelCanvas.Hex("fffaf0"),
+        };
+        static readonly PixelMaterial Flesh = new PixelMaterial(Ramp.Make("5b3c5c", 5, 0.1f, 0.32f, 1.6f))
+        {
+            Rim = 0.65f, Ambient = 0.24f, Dither = 0f, BandDither = 0.14f, Gloss = 0.2f, Bump = Patterns.Lumps(2.6f, 1f, 71), BumpStrength = 0.5f,
+        };
+        static readonly PixelMaterial SpikeTip = new PixelMaterial(Ramp.Make("c9b9a8", 4, 0.06f, 0.4f, 1.25f)) { Rim = 0.5f, Ambient = 0.32f, Dither = 0f, Gloss = 0.35f };
+        static readonly PixelMaterial IrisFiber = PixelMaterial.Glow("e0482f");
+        static readonly PixelMaterial IrisRing = PixelMaterial.Glow("ff8a5c");
         static readonly PixelMaterial LidRim = new PixelMaterial(Ramp.Make("8e4a5f", 4, 0.08f, 0.4f, 1.4f)) { Rim = 0.4f, Ambient = 0.3f, Dither = 0f, Gloss = 0.3f };
         static readonly PixelMaterial Membrane = new PixelMaterial(Ramp.Make("3d2b47", 4, 0.1f, 0.4f, 1.75f)) { Rim = 0.55f, Ambient = 0.22f, Dither = 0.05f };
         static readonly PixelMaterial Bone = new PixelMaterial(Ramp.Make("6e5b73", 4, 0.06f, 0.45f, 1.45f)) { Rim = 0.5f, Ambient = 0.3f, Dither = 0f };
@@ -49,7 +58,6 @@ namespace Abismo.EditorTools
         static readonly PixelMaterial FlashOut = PixelMaterial.Glow("a02a5a70");
         static readonly PixelMaterial Streak = PixelMaterial.Glow("bfaad060");
         static readonly Color32 Glint = PixelCanvas.Hex("fff6e6");
-        static readonly Color32 Sucker = PixelCanvas.Hex("b48aa0");
 
         // ------------------------------------------------------------------
         // Poses
@@ -195,7 +203,11 @@ namespace Abismo.EditorTools
                 a = Add(a, Dir(ang, 2.4f));
                 tail.Add(a);
             }
-            c.Strand(tail, 3f, 0.7f, Flesh, 1.2f, -0.06f, g);
+            for (int i = 0; i < tail.Count - 1; i++)
+            {
+                float ra = Mathf.Lerp(3f, 0.7f, i / (float)(tail.Count - 1)), rb = Mathf.Lerp(3f, 0.7f, (i + 1) / (float)(tail.Count - 1));
+                c.Capsule(tail[i], tail[i + 1], ra, rb, Flesh, 1.2f, -0.06f, g).WithBump(Patterns.Ridges(1.8f, 0.6f), 1f);
+            }
         }
 
         static void DrawGlobe(ShadedCanvas c, Frame fr, Pose p, bool cracks)
@@ -212,6 +224,21 @@ namespace Abismo.EditorTools
                 var pts = new List<Vector2>(path.Length);
                 foreach (var q in path) pts.Add(fr.P(q.x, q.y));
                 c.Strand(pts, 0.62f, 0.42f, veinMat, 2.1f, 0f, g);
+                // Capilares: ramas finas que salen de la vena y se bifurcan otra vez.
+                if (v < 5)
+                {
+                    for (int k = 2; k < pts.Count - 2; k += 3)
+                    {
+                        Vector2 d = Sub(pts[k + 1], pts[k]).normalized;
+                        float sgn = (v + k) % 2 == 0 ? 1f : -1f;
+                        Vector2 b0 = pts[k], b1 = Add(b0, Add(Scale(d, 1.8f), Scale(V(-d.y, d.x), 1.8f * sgn)));
+                        Vector2 b2 = Add(b1, Add(Scale(d, 1.6f), Scale(V(-d.y, d.x), 0.6f * sgn)));
+                        Vector2 b3 = Add(b1, Add(Scale(d, 0.4f), Scale(V(-d.y, d.x), 1.8f * sgn)));
+                        c.Capsule(b0, b1, 0.45f, 0.4f, veinMat, 2.1f, 0f, g);
+                        c.Capsule(b1, b2, 0.4f, 0.35f, veinMat, 2.1f, 0f, g);
+                        if (k % 2 == 0) c.Capsule(b1, b3, 0.38f, 0.32f, veinMat, 2.1f, 0f, g);
+                    }
+                }
             }
 
             if (cracks)
@@ -231,8 +258,18 @@ namespace Abismo.EditorTools
             float irx = 5.6f * fr.Sx, iry = 7.4f * fr.Sy;
             c.Ellipse(ic, irx, iry, fr.Tilt, IrisOuter, 2.3f, 0f, g);
             c.Ellipse(ic, irx - 1.2f, iry - 1.4f, fr.Tilt, IrisMid, 2.35f, 0f, g);
+            // Vetas radiales del iris (fibras oscuras sobre el anillo medio).
+            for (int k = 0; k < 10; k++)
+            {
+                float a = k * 36f + (k % 2) * 11f;
+                Vector2 f0 = Add(ic, Rotate(V(Mathf.Cos(a * Mathf.Deg2Rad) * (irx - 3.4f), Mathf.Sin(a * Mathf.Deg2Rad) * (iry - 4.2f)), V(0f, 0f), fr.Tilt));
+                Vector2 f1 = Add(ic, Rotate(V(Mathf.Cos(a * Mathf.Deg2Rad) * (irx - 0.9f), Mathf.Sin(a * Mathf.Deg2Rad) * (iry - 1.1f)), V(0f, 0f), fr.Tilt));
+                c.Capsule(f0, f1, 0.42f, 0.35f, IrisFiber, 2.37f, 0f, g);
+            }
             c.Ellipse(fr.P(lx + 0.4f, ly - 0.6f), irx - 2.6f, iry - 3.2f, fr.Tilt, vein > 0.6f ? IrisHot : IrisInner, 2.4f, 0f, g);
             float dil = Mathf.Clamp01(p["dil"]);
+            // Collarete: anillo claro alrededor de la pupila.
+            c.Ellipse(fr.P(lx + 0.5f, ly), (2.4f + 1.4f * dil) * fr.Sx + 0.9f, (0.9f + 3.6f * dil) * fr.Sy + 0.9f, fr.Tilt, IrisRing, 2.43f, 0f, g);
             c.Ellipse(fr.P(lx + 0.5f, ly), (2.4f + 1.4f * dil) * fr.Sx, (0.9f + 3.6f * dil) * fr.Sy, fr.Tilt, Pupil, 2.45f, 0f, g);
 
             // Brillo húmedo en la córnea.
@@ -240,6 +277,12 @@ namespace Abismo.EditorTools
             c.Decal(glint.x, glint.y, Glint);
             c.Decal(glint.x + 1f, glint.y, Glint);
             c.Decal(glint.x, glint.y - 1f, Glint);
+            Vector2 glint2 = fr.P(lx + 2.4f, ly - 4f);
+            c.Decal(glint2.x, glint2.y, Glint);
+            // Humedad: brillos especulares sueltos en la esclerótica.
+            c.Glint(fr.P(-5.5f, 7.5f), g, 0, Sclera);
+            c.Glint(fr.P(-3.5f, 9f), g, 0, Sclera);
+            c.Glint(fr.P(-7.5f, -6f), g, 0, Sclera);
 
             DrawLids(c, fr, p, g);
         }
@@ -272,6 +315,25 @@ namespace Abismo.EditorTools
             c.Custom(minX, minY, maxX, maxY, (x, y) => Sample(x, y, true, true), LidRim, 2.6f, 0f, g);
             c.Custom(minX, minY, maxX, maxY, (x, y) => Sample(x, y, false, false), Flesh, 2.6f, -0.04f, g);
             c.Custom(minX, minY, maxX, maxY, (x, y) => Sample(x, y, false, true), LidRim, 2.6f, -0.04f, g);
+
+            // Arrugas del párpado (paralelas al borde) y brillo húmedo en el reborde.
+            for (int w = 0; w < 2; w++)
+            {
+                float off = 2.6f + w * 2.4f;
+                var upper = new List<Vector2>();
+                var lower = new List<Vector2>();
+                for (int k = 0; k <= 6; k++)
+                {
+                    float u = Mathf.Lerp(-8f + w * 2f, 11f - w * 2f, k / 6f);
+                    float vu = top0 + 0.022f * (u - 5f) * (u - 5f) + off;
+                    float vl = -(bot0 + 0.02f * (u - 5f) * (u - 5f) + off);
+                    if (u * u + vu * vu < (R - 0.5f) * (R - 0.5f)) upper.Add(fr.P(u, vu));
+                    if (u * u + vl * vl < (R - 0.5f) * (R - 0.5f)) lower.Add(fr.P(u, vl));
+                }
+                if (upper.Count > 1) c.Fold(upper, g, 2, 1, Flesh);
+                if (lower.Count > 1 && w == 0) c.Fold(lower, g, 2, 1, Flesh);
+            }
+            if (top0 < R - 1f) c.Glint(fr.P(6f, top0 + 0.4f + 0.022f), g, 0, LidRim);
         }
 
         // Ala de murciélago: tres dedos de hueso y membrana con el borde festoneado.
@@ -296,10 +358,17 @@ namespace Abismo.EditorTools
             Vector2 Scallop(Vector2 a, Vector2 b) => Mix(Mix(a, b, 0.5f), shoulder, 0.32f);
             var membrane = new[] { shoulder, tips[0], Scallop(tips[0], tips[1]), tips[1], Scallop(tips[1], tips[2]), tips[2], Mix(tips[2], back, 0.55f), back };
             c.Poly(membrane, Membrane, z, 1.5f, shade, g);
+            // Venas de la membrana entre los dedos.
+            c.Crease(new[] { shoulder, Mix(Scallop(tips[0], tips[1]), shoulder, 0.25f) }, 1, g, Membrane);
+            c.Crease(new[] { shoulder, Mix(Scallop(tips[1], tips[2]), shoulder, 0.25f) }, 1, g, Membrane);
             for (int i = 0; i < 3; i++)
             {
-                c.Capsule(shoulder, knuckles[i], 1.2f * scale, 0.9f * scale, Bone, z + 0.05f, shade, g);
-                c.Capsule(knuckles[i], tips[i], 0.9f * scale, 0.45f, Bone, z + 0.05f, shade, g);
+                // Púas anilladas (relieve en anillos) con la punta de hueso afilada.
+                c.Capsule(shoulder, knuckles[i], 1.2f * scale, 0.9f * scale, Bone, z + 0.05f, shade, g).WithBump(Patterns.Ridges(2.2f, 0.6f), 1f);
+                c.Capsule(knuckles[i], tips[i], 0.9f * scale, 0.45f, Bone, z + 0.05f, shade, g).WithBump(Patterns.Ridges(2f, 0.5f), 1f);
+                c.Ellipse(knuckles[i], 1.3f * scale, 1.3f * scale, 0f, Bone, z + 0.06f, shade, g);
+                Vector2 dt = Sub(tips[i], knuckles[i]).normalized;
+                c.Capsule(tips[i], Add(tips[i], Scale(dt, 3.2f * scale)), 0.6f, 0.15f, SpikeTip, z + 0.07f, shade, g);
             }
             c.Capsule(Add(tips[0], Dir(baseAngles[0] + w, 0.5f)), Add(tips[0], Dir(baseAngles[0] + w - 40f, 2.5f)), 0.6f, 0.3f, Bone, z + 0.06f, shade, g);
         }
@@ -331,17 +400,26 @@ namespace Abismo.EditorTools
                     pts.Add(a);
                 }
                 float r0 = (i == 2 || i == 3) ? 2.6f : 2.1f;
-                c.Strand(pts, r0, 0.5f, Flesh, isFront ? 2.7f : 0.6f, isFront ? 0f : -0.13f, g);
+                float zt = isFront ? 2.7f : 0.6f, sh = isFront ? 0f : -0.13f;
+                for (int k = 0; k < segments; k++)
+                {
+                    float ra = Mathf.Lerp(r0, 0.5f, k / (float)segments), rb = Mathf.Lerp(r0, 0.5f, (k + 1) / (float)segments);
+                    c.Capsule(pts[k], pts[k + 1], ra, rb, Flesh, zt, sh, g).WithBump(Patterns.Ridges(2.2f, 0.5f), 0.9f);
+                }
                 if (isFront)
                 {
-                    // Ventosas: puntitos claros en la cara interior.
-                    for (int k = 2; k < segments - 1; k += 2)
+                    // Cara interior más clara con ventosas: aro claro y hueco oscuro, de mayor a menor.
+                    for (int k = 1; k < segments - 1; k++)
                     {
-                        Vector2 d = Sub(pts[k + 1], pts[k]);
-                        Vector2 side = new Vector2(d.y, -d.x).normalized;
-                        float r = Mathf.Lerp(r0, 0.5f, k / (float)segments) * 0.6f;
-                        c.Decal(pts[k].x + side.x * r, pts[k].y + side.y * r, Sucker);
+                        Vector2 d = Sub(pts[k + 1], pts[k]).normalized;
+                        Vector2 side = new Vector2(d.y, -d.x);
+                        float r = Mathf.Lerp(r0, 0.5f, k / (float)segments);
+                        if (r < 0.9f) break;
+                        Vector2 q = Add(Mix(pts[k], pts[k + 1], 0.5f), Scale(side, r * 0.5f));
+                        c.Dot(q, 2, g, Flesh);
+                        if (r > 1.5f && k % 2 == 1) c.Dot(Add(q, Scale(side, -0.9f)), -2, g, Flesh);
                     }
+                    c.Glint(Add(pts[2], V(-0.7f, 0.8f)), g, 0, Flesh);
                 }
             }
         }

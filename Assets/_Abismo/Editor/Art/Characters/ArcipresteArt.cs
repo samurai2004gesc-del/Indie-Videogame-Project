@@ -35,9 +35,26 @@ namespace Abismo.EditorTools
 
         static readonly PixelMaterial Alb = new PixelMaterial(Ramp.Make("8a8170", 5, 0.1f, 0.3f, 1.45f)) { Rim = 0.6f, Ambient = 0.22f, Dither = 0.04f };
         static readonly PixelMaterial Sleeve = new PixelMaterial(Ramp.Make("665d4e", 5, 0.1f, 0.3f, 1.5f)) { Rim = 0.6f, Ambient = 0.22f, Dither = 0.04f };
-        static readonly PixelMaterial AlbShadow = new PixelMaterial(Ramp.Make("4f463b", 4, 0.1f, 0.4f, 1.4f)) { Rim = 0.3f, Ambient = 0.3f, Dither = 0f };
         static readonly PixelMaterial Chasuble = new PixelMaterial(Ramp.Make("7c1527", 5, 0.1f, 0.28f, 1.65f)) { Rim = 0.7f, Ambient = 0.2f, Dither = 0.04f };
-        static readonly PixelMaterial Gold = new PixelMaterial(Ramp.Make("b48a33", 5, 0.12f, 0.3f, 1.6f)) { Gloss = 0.7f, Rim = 0.5f, Ambient = 0.26f, Dither = 0f };
+        static readonly PixelMaterial Gold = new PixelMaterial(Ramp.Make("b48a33", 5, 0.12f, 0.3f, 1.6f))
+        {
+            Gloss = 0.7f, Rim = 0.5f, Ambient = 0.26f, Dither = 0f, SpecularAt = 0.86f, Specular = PixelCanvas.Hex("fff6d2"),
+        };
+        // Oro viejo del brocado (más apagado que los galones para que no compita con ellos).
+        static readonly PixelMaterial Brocade = new PixelMaterial(Ramp.Make("7e5c26", 4, 0.1f, 0.4f, 1.55f)) { Gloss = 0.55f, Rim = 0.35f, Ambient = 0.16f, Dither = 0f };
+        static readonly PixelMaterial Lace = new PixelMaterial(Ramp.Make("a39a84", 5, 0.1f, 0.34f, 1.42f)) { Rim = 0.55f, Ambient = 0.24f, Dither = 0f };
+        static readonly PixelMaterial GemRed = new PixelMaterial(Ramp.Make("9c1830", 4, 0.06f, 0.35f, 1.5f))
+        {
+            Gloss = 0.6f, Rim = 0.3f, Ambient = 0.3f, Dither = 0f, SpecularAt = 0.8f, Specular = PixelCanvas.Hex("ffe8ec"),
+        };
+        static readonly PixelMaterial GemGreen = new PixelMaterial(Ramp.Make("1d8a72", 4, 0.06f, 0.35f, 1.5f))
+        {
+            Gloss = 0.6f, Rim = 0.3f, Ambient = 0.3f, Dither = 0f, SpecularAt = 0.8f, Specular = PixelCanvas.Hex("e8fff6"),
+        };
+        static readonly Color32 Grime = PixelCanvas.Hex("3d3a2c");
+        static readonly PixelMaterial Barnacle = new PixelMaterial(Ramp.Make("a39a80", 4, 0.08f, 0.4f, 1.35f)) { Rim = 0.5f, Ambient = 0.3f, Dither = 0f };
+        // Fondo hundido del medallón de la mitra (esmalte oscuro donde se engasta el Signo).
+        static readonly PixelMaterial MitreRecess = new PixelMaterial(Ramp.Make("2f5a50", 4, 0.06f, 0.45f, 1.4f)) { Ambient = 0.4f, Rim = 0.2f, Dither = 0f, Outline = false };
         static readonly PixelMaterial GoldDark = new PixelMaterial(Ramp.Make("6c4e20", 4, 0.1f, 0.4f, 1.5f)) { Gloss = 0.4f, Rim = 0.4f, Ambient = 0.3f, Dither = 0f };
         static readonly PixelMaterial Skin = new PixelMaterial(Ramp.Make("4c675f", 5, 0.12f, 0.3f, 1.55f)) { Rim = 0.65f, Gloss = 0.18f, Ambient = 0.22f, Dither = 0.03f };
         static readonly PixelMaterial Belly = new PixelMaterial(Ramp.Make("8f9878", 4, 0.1f, 0.4f, 1.4f)) { Rim = 0.4f, Ambient = 0.3f, Dither = 0f };
@@ -284,7 +301,6 @@ namespace Abismo.EditorTools
             public Vector2 Hip;
             public float Lean, HeadTilt, Fall;
             public Vector2 FallPivot;
-            public Vector2 Neck;
 
             public Vector2 W(Vector2 p) => Fall == 0f ? p : Rotate(p, FallPivot, -Fall);
             public Vector2 U(float x, float y) => W(Rotate(V(Hip.x + x, Hip.y + y), Hip, -Lean));
@@ -340,34 +356,79 @@ namespace Abismo.EditorTools
             var hemF = b.W(V(b.Hip.x + 31f + hipDrop * 0.5f + hemSway * 0.6f, ground));
             var midB = b.W(V(b.Hip.x - 33f + hemSway * 0.8f, b.Hip.y * 0.45f));
             var midF = b.W(V(b.Hip.x + 26f + hemSway * 0.3f, b.Hip.y * 0.45f));
-            var pts = new List<Vector2> { waistB, midB, hemB };
-            // Bajo festoneado y con pliegues.
+            // El alba acaba un poco por encima del bajo: debajo asoma el encaje festoneado.
+            Vector2 hemDir = Sub(hemF, hemB).normalized;
+            Vector2 hemUp = V(-hemDir.y, hemDir.x);
+            var pts = new List<Vector2> { waistB, midB, Add(hemB, Scale(hemUp, 2.5f)) };
             const int n = 9;
             for (int i = 1; i < n; i++)
             {
                 float t = i / (float)n;
-                Vector2 q = Mix(hemB, hemF, t);
-                q.y += (i % 2 == 0 ? 0f : 2.5f) + Mathf.Sin(ph + t * 6f) * 0.8f;
-                pts.Add(q);
+                pts.Add(Add(Mix(hemB, hemF, t), Scale(hemUp, 2.5f + Mathf.Sin(ph + t * 6f) * 0.5f)));
             }
-            pts.Add(hemF);
+            pts.Add(Add(hemF, Scale(hemUp, 2.5f)));
             pts.Add(midF);
             pts.Add(waistF);
-            var albDrape = new Drape(pts.ToArray(), Mix(waistB, waistF, 0.5f), Mix(hemB, hemF, 0.45f), 36f, 6f, ph * 0.8f, 0.45f);
-            albDrape.AddTo(c, Alb, null, 0f, 2f, g);
+            var alb = new Drape(pts.ToArray(), Mix(waistB, waistF, 0.5f), Mix(hemB, hemF, 0.45f), 36f, 6f, ph * 0.8f, 0.7f);
+            float hemLen = Sub(hemF, hemB).magnitude;
+            // Mugre de salitre que sube desde el bajo (manchas que chorrean).
+            alb.AddTo(c, Alb, 2f, g).Frame(alb.Top, alb.AxisAngle)
+               .WithTint(Grime, 0.42f, (s, r) =>
+               {
+                   float wet = s - alb.Len * 0.62f - PixelCanvas.ValueNoise(r / 3f, 0f, 0, 41) * 14f;
+                   return wet > 0f && PixelCanvas.ValueNoise(r / 2.2f, s / 5f, 0, 43) > 0.38f ? 1f : 0f;
+               });
 
-            // Pliegues verticales (sombras) y franja dorada en el bajo.
-            for (int i = 0; i < 4; i++)
+            // Pliegues pesados: surcos con cresta iluminada que nacen en la cintura y se abren hacia el bajo.
+            foreach (float r in alb.Valleys())
             {
-                float t = 0.18f + i * 0.21f + 0.03f * Mathf.Sin(ph + i);
-                Vector2 top = Mix(waistB, waistF, t);
-                Vector2 bottom = Mix(hemB, hemF, t + 0.04f * Mathf.Sin(ph * 0.7f + i));
-                bottom.y += 3f;
-                c.Capsule(Mix(top, bottom, 0.25f), bottom, 0.6f, 1.6f, AlbShadow, 2.05f, 0f, g);
+                float s0 = alb.Len * (0.16f + 0.12f * PixelCanvas.Hash((int)(r * 10f), 3, 7));
+                var line = new List<Vector2>();
+                for (int k = 0; k <= 4; k++)
+                {
+                    float s = Mathf.Lerp(s0, alb.Len * 1.08f, k / 4f);
+                    line.Add(alb.At(s, r * Mathf.Lerp(0.82f, 1.05f, k / 4f) + Mathf.Sin(ph + k + r) * 0.6f));
+                }
+                c.Fold(line, g, 2, 1, Alb);
             }
-            var bandB = Add(hemB, V(0f, 4f));
-            var bandF = Add(hemF, V(0f, 4f));
-            c.Poly(new[] { Add(hemB, V(-0.5f, 0.5f)), bandB, bandF, Add(hemF, V(0.5f, 0.5f)) }, GoldDark, 2.08f, 1f, 0f, g);
+
+            // Encaje del bajo: festones con calados (agujeros "hondos") en dos hileras y un galón dorado encima.
+            const float laceH = 9f;
+            float hemAng = Mathf.Atan2(hemDir.y, hemDir.x) * Mathf.Rad2Deg;
+            float lMinX = Mathf.Min(hemB.x, hemF.x) - laceH - 2f, lMaxX = Mathf.Max(hemB.x, hemF.x) + laceH + 2f;
+            float lMinY = Mathf.Min(hemB.y, hemF.y) - laceH - 2f, lMaxY = Mathf.Max(hemB.y, hemF.y) + laceH + 2f;
+            (bool, N3) LaceSample(float px, float py, float v0, float v1, bool scallop)
+            {
+                float dx = px - hemB.x, dy = py - hemB.y;
+                float u = dx * hemDir.x + dy * hemDir.y, v = dx * hemUp.x + dy * hemUp.y;
+                if (u < -0.5f || u > hemLen + 0.5f || v > v1) return (false, N3.Front);
+                float bottom = v0;
+                if (scallop)
+                {
+                    float q = Mathf.Repeat(u + 1f, 5f) / 5f * 2f - 1f;
+                    bottom = 1.9f - 1.9f * Mathf.Sqrt(Mathf.Max(0f, 1f - q * q));
+                }
+                if (v < bottom) return (false, N3.Front);
+                alb.Local(px, py, out float s, out float r);
+                return (true, alb.Normal(s, r));
+            }
+            c.Custom(lMinX, lMinY, lMaxX, lMaxY, (x, y) => LaceSample(x, y, 0f, laceH, true), Lace, 2.06f, 0f, g)
+             .Frame(hemB, hemAng)
+             .WithDetail((u, v) =>
+             {
+                 // Hilera baja: ojales sobre cada festón. Hilera alta: rombos calados con punto central.
+                 float cu = Mathf.Repeat(u + 1f, 5f) - 2.5f;
+                 if (v > 2.2f && v < 3.4f && Mathf.Abs(cu) < 0.6f) return -2;
+                 float du = Mathf.Abs(Mathf.Repeat(u - 1.5f, 5f) - 2.5f), dv = Mathf.Abs(v - 5.6f);
+                 float dd = du + dv * 1.2f;
+                 if (dd > 1.5f && dd < 2.4f) return -2;
+                 if (dd < 0.5f) return -1;
+                 if (v > 7.6f) return -1;
+                 return 0;
+             })
+             .WithTint(Grime, 0.35f, Patterns.Spots(2.5f, 0.62f, 47));
+            c.Custom(lMinX, lMinY, lMaxX, lMaxY, (x, y) => LaceSample(x, y, laceH - 0.4f, laceH + 2f, false), GoldDark, 2.08f, 0f, g)
+             .Frame(hemB, hemAng).WithDetail(Patterns.Stripes(3f, 1f, 1, 0.5f));
         }
 
         static void DrawFeet(ShadedCanvas c, Body b, Pose p)
@@ -414,52 +475,145 @@ namespace Abismo.EditorTools
             Vector2 hump = b.U(-31f, 34f), shoulderTop = b.U(-10f, 52f);
             var outline = new[] { collar, shoulderTop, sF, Add(frontMid, V(1f, 0f)), frontHem, Mix(frontHem, tip, 0.5f) + V(0f, -2f), tip,
                                   Mix(tip, backHem, 0.5f) + V(0f, -2f), backHem, backMid, hump, sB };
-            // Tela con volumen (se curva alrededor del cuerpo, con pliegues abajo) y ribete de oro en el borde.
-            var drape = new Drape(outline, b.U(-6f, 50f), tip, 34f, 5f, ph * 0.6f, 0.55f);
-            drape.AddTo(c, Chasuble, Gold, 2.2f, 3.5f, g);
+            // Tela pesada con volumen (se curva alrededor del cuerpo, pliegues hondos abajo).
+            var drape = new Drape(outline, b.U(-6f, 50f), tip, 34f, 5f, ph * 0.6f, 1.05f);
+            const float galloon = 4.6f;
 
-            // Galón vertical (aurifrisia) con bordado del Signo.
+            // Campo carmesí con damasco: granadas tejidas en un tono más hondo dentro de cada ojiva.
+            drape.Region(c, (s, r, e) => e >= galloon, Chasuble, 3.5f, g).Frame(drape.Top, drape.AxisAngle)
+                 .WithDetail((s, r) => Damask(s, r));
+            // Brocado: celosía de ojivas en hilo de oro viejo con un botón de oro en el centro de cada celda.
+            drape.Region(c, (s, r, e) => e >= galloon + 0.6f && (OgeeLine(s, r, BrocW, BrocH, 0.44f) || OgeeKnot(s, r)), Brocade, 3.52f, g);
+
+            // Galón: canto de oro, trenza oscura tachonada de perlas y otro canto de oro hacia dentro.
+            drape.Region(c, (s, r, e) => e < 1.3f, Gold, 3.55f, g);
+            drape.Region(c, (s, r, e) => e >= 1.3f && e < 3.3f, GoldDark, 3.55f, g);
+            drape.Region(c, (s, r, e) => e >= 3.3f && e < galloon, Gold, 3.55f, g);
+            int k = 0;
+            foreach (var pearl in drape.EdgePoints(2.3f, 3f))
+            {
+                if (k++ % 2 == 0) c.Dot(pearl, 3, g, GoldDark);
+                else c.Dot(pearl, -1, g, GoldDark);
+            }
+
+            // Pliegues pesados: surco + cresta en cada valle de la tela, desde media altura hasta el bajo.
+            foreach (float r in drape.Valleys())
+            {
+                float s0 = drape.Len * (0.28f + 0.16f * PixelCanvas.Hash((int)(r * 10f) + 50, 5, 7));
+                var line = new List<Vector2>();
+                for (int i = 0; i <= 4; i++)
+                {
+                    float s = Mathf.Lerp(s0, drape.Len * 1.05f, i / 4f);
+                    line.Add(drape.At(s, r * Mathf.Lerp(0.9f, 1.04f, i / 4f) + Mathf.Sin(ph * 0.7f + i * 1.3f + r) * 0.7f));
+                }
+                c.Fold(line, g, 2, 1, Chasuble);
+                c.Crease(line, 1, g, Brocade);
+            }
+
+            // Aurifrisia (galón vertical) bordada: cantos oscuros, cadena de rombos y pedrería.
             Vector2 o0 = b.U(6f, 46f), o1 = b.U(13f, 46f);
             Vector2 o2 = Add(Mix(tip, frontHem, 0.42f), V(0f, 1f)), o3 = Add(Mix(tip, frontHem, 0.18f), V(0f, 1f));
-            c.Poly(new[] { o0, o1, o2, o3 }, Gold, 3.55f, 1f, 0f, g);
-            for (int i = 1; i < 6; i++)
+            Vector2 oTop = Mix(o0, o1, 0.5f), oBot = Mix(o3, o2, 0.5f);
+            Vector2 oDir = Sub(oBot, oTop);
+            float oLen = Mathf.Max(1f, oDir.magnitude);
+            float oAng = Mathf.Atan2(oDir.y, oDir.x) * Mathf.Rad2Deg;
+            float w0 = Sub(o1, o0).magnitude * 0.5f, w1 = Sub(o2, o3).magnitude * 0.5f;
+            c.Poly(new[] { o0, o1, o2, o3 }, Gold, 3.6f, 1f, 0f, g).Frame(oTop, oAng).WithDetail((u, v) =>
             {
-                Vector2 m = Mix(Mix(o0, o1, 0.5f), Mix(o2, o3, 0.5f), i / 6f);
-                c.Decal(m.x, m.y, Stitch);
-                c.Decal(m.x - 1f, m.y - 1f, Stitch);
-                c.Decal(m.x + 1f, m.y - 1f, Stitch);
-            }
-            // Bordados sueltos en el campo carmesí.
-            for (int i = 0; i < 4; i++)
+                float hw = Mathf.Lerp(w0, w1, Mathf.Clamp01(u / oLen));
+                float av = Mathf.Abs(v);
+                if (av > hw - 1f) return -2;
+                if (av > hw - 2f && av <= hw - 1f) return 1;
+                float du = Mathf.Repeat(u - 2f, 9f) - 4.5f;
+                float dd = Mathf.Abs(du) / 3.8f + av / Mathf.Max(1.6f, hw - 2.2f);
+                if (dd > 0.78f && dd < 1.08f) return -2;
+                if (Mathf.Abs(du) > 4f && av < 0.7f) return -1;
+                return 0;
+            });
+            // Gemas engastadas en los rombos (alternas: esmeralda de mar y rubí), con su brillo.
+            for (int i = 0; ; i++)
             {
-                Vector2 m = Mix(Mix(sB, backHem, 0.3f + i * 0.17f), Mix(o3, o2, 0.3f), 0.35f);
-                c.Decal(m.x, m.y, Stitch);
+                float u = 6.5f + i * 9f;
+                if (u > oLen - 3f) break;
+                Vector2 at = Add(oTop, Scale(oDir, u / oLen));
+                int gg = c.NewGroup();
+                var gem = i % 2 == 0 ? GemGreen : GemRed;
+                c.Ellipse(at, 1.7f, 1.9f, oAng, gem, 3.65f, 0f, gg);
+                c.Glint(Add(at, V(-0.5f, 0.6f)), gg, 0, gem);
             }
+        }
+
+        // ---------------- Brocado (coordenadas de la tela: s a lo largo, r a través, en píxeles) ----------------
+
+        const float BrocW = 13f, BrocH = 30f;
+
+        /// <summary>Celosía de ojivas: dos familias de ondas que se tocan formando celdas en forma de llama.</summary>
+        static bool OgeeLine(float s, float r, float w, float h, float width)
+        {
+            float f = s * 2f * Mathf.PI / h;
+            float a = w * 0.5f * Mathf.Sin(f);
+            float slope = w * 0.5f * (2f * Mathf.PI / h) * Mathf.Cos(f);
+            float norm = Mathf.Sqrt(1f + slope * slope);
+            float d1 = Mathf.Abs(Mathf.Repeat(r - a + w * 0.5f, w) - w * 0.5f);
+            float d2 = Mathf.Abs(Mathf.Repeat(r + a + w * 0.5f, w) - w * 0.5f);
+            return Mathf.Min(d1, d2) / norm < width;
+        }
+
+        /// <summary>Coordenadas dentro de la celda de la celosía más cercana (centros al tresbolillo).</summary>
+        static void OgeeCell(float s, float r, out float dr, out float ds)
+        {
+            float hh = BrocH * 0.5f;
+            float ar = r - Mathf.Round(r / BrocW) * BrocW;
+            float aS = s - (Mathf.Floor(s / hh) * hh + hh * 0.5f);
+            float br = r - (Mathf.Round((r - BrocW * 0.5f) / BrocW) * BrocW + BrocW * 0.5f);
+            float bS = s - Mathf.Round(s / hh) * hh;
+            float da = ar * ar / (BrocW * BrocW) + aS * aS / (hh * hh);
+            float db = br * br / (BrocW * BrocW) + bS * bS / (hh * hh);
+            if (da <= db) { dr = ar; ds = aS; }
+            else { dr = br; ds = bS; }
+        }
+
+        static bool OgeeKnot(float s, float r)
+        {
+            OgeeCell(s, r, out float dr, out float ds);
+            return Mathf.Abs(dr) < 0.6f && Mathf.Abs(ds + 0.5f) < 0.6f;
+        }
+
+        /// <summary>Damasco: una granada (cuerpo y corona de tres puntas) tejida en un tono más hondo en cada celda.</summary>
+        static int Damask(float s, float r)
+        {
+            OgeeCell(s, r, out float dr, out float ds);
+            // ds crece hacia abajo (a lo largo de la tela): la corona queda arriba (ds negativo).
+            float body = dr * dr / (2.6f * 2.6f) + (ds - 1f) * (ds - 1f) / (3.2f * 3.2f);
+            if (body < 1f) return -1;
+            if (ds < -1.6f && ds > -4.2f && (Mathf.Abs(dr) < 0.55f || Mathf.Abs(Mathf.Abs(dr) - 1.8f) < 0.55f && ds > -3.4f)) return -1;
+            return 0;
         }
 
         /// <summary>
         /// Tela que cuelga: dentro de un contorno, con la normal de un cilindro (se curva hacia los lados), un poco
-        /// hacia arriba en los hombros y pliegues ondulados que crecen hacia el bajo. Opcionalmente, ribete en el borde.
+        /// hacia arriba en los hombros y pliegues ondulados que crecen hacia el bajo. Coordenadas propias de la tela
+        /// (s a lo largo desde arriba, r a través, en píxeles) para bordados, damascos y pliegues.
         /// </summary>
         sealed class Drape
         {
             readonly Vector2[] poly;
-            readonly Vector2 top, axis, perp;
-            readonly float len, halfWidth, folds, phase, amp;
+            public readonly Vector2 Top, Axis, Perp;
+            public readonly float Len, HalfWidth, Folds, Phase, Amp;
             readonly float minX, minY, maxX, maxY;
 
             public Drape(Vector2[] outline, Vector2 top, Vector2 bottom, float halfWidth, float folds, float phase, float amp)
             {
                 poly = outline;
-                this.top = top;
+                Top = top;
                 Vector2 d = Sub(bottom, top);
-                len = Mathf.Max(1f, d.magnitude);
-                axis = Scale(d, 1f / len);
-                perp = new Vector2(-axis.y, axis.x);
-                this.halfWidth = halfWidth;
-                this.folds = folds;
-                this.phase = phase;
-                this.amp = amp;
+                Len = Mathf.Max(1f, d.magnitude);
+                Axis = Scale(d, 1f / Len);
+                Perp = new Vector2(-Axis.y, Axis.x);
+                HalfWidth = halfWidth;
+                Folds = folds;
+                Phase = phase;
+                Amp = amp;
                 minX = minY = float.MaxValue;
                 maxX = maxY = float.MinValue;
                 foreach (var q in outline)
@@ -469,25 +623,77 @@ namespace Abismo.EditorTools
                 }
             }
 
-            public void AddTo(ShadedCanvas c, PixelMaterial cloth, PixelMaterial border, float borderWidth, float z, int group)
+            /// <summary>Ángulo del eje (para el marco local: u = s a lo largo, v = r a través).</summary>
+            public float AxisAngle => Mathf.Atan2(Axis.y, Axis.x) * Mathf.Rad2Deg;
+
+            public Vector2 At(float s, float r) => Add(Top, Add(Scale(Axis, s), Scale(Perp, r)));
+
+            public void Local(float px, float py, out float s, out float r)
             {
-                c.Custom(minX, minY, maxX, maxY, (x, y) => Sample(x, y, border == null ? -1f : borderWidth, false), cloth, z, 0f, group);
-                if (border != null) c.Custom(minX, minY, maxX, maxY, (x, y) => Sample(x, y, borderWidth, true), border, z, 0f, group);
+                float qx = px - Top.x, qy = py - Top.y;
+                s = qx * Axis.x + qy * Axis.y;
+                r = qx * Perp.x + qy * Perp.y;
             }
 
-            (bool, N3) Sample(float px, float py, float borderWidth, bool wantBorder)
+            public N3 Normal(float s, float r)
             {
-                if (!InPoly(px, py)) return (false, N3.Front);
-                bool isBorder = borderWidth > 0f && EdgeDistance(px, py) < borderWidth;
-                if (isBorder != wantBorder) return (false, N3.Front);
-                float qx = px - top.x, qy = py - top.y;
-                float t = Mathf.Clamp01((qx * axis.x + qy * axis.y) / len);
-                float u = Mathf.Clamp((qx * perp.x + qy * perp.y) / halfWidth, -1f, 1f);
-                float lx = u * 0.8f + amp * (0.2f + 0.8f * t) * Mathf.Sin(u * folds * Mathf.PI + phase);
+                float t = Mathf.Clamp01(s / Len);
+                float u = Mathf.Clamp(r / HalfWidth, -1f, 1f);
+                float lx = u * 0.8f + Amp * (0.2f + 0.8f * t) * Mathf.Sin(u * Folds * Mathf.PI + Phase);
                 float ly = 0.45f * Mathf.Clamp01(1f - t * 3f);
                 float lz = Mathf.Sqrt(Mathf.Max(0.06f, 1f - lx * lx - ly * ly));
-                var n = new N3(perp.x * lx - axis.x * ly, perp.y * lx - axis.y * ly, lz).Normalized();
-                return (true, n);
+                return new N3(Perp.x * lx - Axis.x * ly, Perp.y * lx - Axis.y * ly, lz).Normalized();
+            }
+
+            /// <summary>Posiciones r (px) de los valles de los pliegues (donde la normal pasa de mirar a un lado al otro).</summary>
+            public List<float> Valleys()
+            {
+                var list = new List<float>();
+                for (int k = -6; k <= 6; k++)
+                {
+                    float u = (Mathf.PI * (2 * k + 1) - Phase) / (Folds * Mathf.PI);
+                    if (u > -0.92f && u < 0.92f) list.Add(u * HalfWidth);
+                }
+                return list;
+            }
+
+            /// <summary>Tela entera (o desde una distancia al borde).</summary>
+            public ShadedCanvas.Shape AddTo(ShadedCanvas c, PixelMaterial cloth, float z, int group) =>
+                Region(c, (s, r, e) => true, cloth, z, group);
+
+            /// <summary>Parte de la tela que cumple pred(s, r, distancia al borde): bordados, galones, damascos...</summary>
+            public ShadedCanvas.Shape Region(ShadedCanvas c, System.Func<float, float, float, bool> pred, PixelMaterial m, float z, int group)
+            {
+                return c.Custom(minX, minY, maxX, maxY, (px, py) =>
+                {
+                    if (!InPoly(px, py)) return (false, N3.Front);
+                    Local(px, py, out float s, out float r);
+                    if (!pred(s, r, EdgeDistance(px, py))) return (false, N3.Front);
+                    return (true, Normal(s, r));
+                }, m, z, 0f, group);
+            }
+
+            /// <summary>Puntos a lo largo del contorno, metidos <paramref name="inset"/> px hacia dentro, cada <paramref name="spacing"/> px.</summary>
+            public List<Vector2> EdgePoints(float inset, float spacing)
+            {
+                var list = new List<Vector2>();
+                for (int i = 0, j = poly.Length - 1; i < poly.Length; j = i++)
+                {
+                    Vector2 a = poly[j], e = Sub(poly[i], a);
+                    float l = e.magnitude;
+                    if (l < spacing) continue;
+                    Vector2 nrm = V(-e.y / l, e.x / l);
+                    int count = Mathf.FloorToInt(l / spacing);
+                    for (int k = 1; k < count; k++)
+                    {
+                        Vector2 q = Add(a, Scale(e, k / (float)count));
+                        Vector2 inPt = Add(q, Scale(nrm, inset));
+                        if (!InPoly(inPt.x, inPt.y)) inPt = Add(q, Scale(nrm, -inset));
+                        if (!InPoly(inPt.x, inPt.y) || EdgeDistance(inPt.x, inPt.y) < inset - 0.4f) continue;
+                        list.Add(inPt);
+                    }
+                }
+                return list;
             }
 
             bool InPoly(float x, float y)
@@ -507,8 +713,8 @@ namespace Abismo.EditorTools
                 float best = float.MaxValue;
                 for (int i = 0, j = poly.Length - 1; i < poly.Length; j = i++)
                 {
-                    Vector2 a = poly[j], b = poly[i];
-                    float dx = b.x - a.x, dy = b.y - a.y;
+                    Vector2 a = poly[j], bb = poly[i];
+                    float dx = bb.x - a.x, dy = bb.y - a.y;
                     float t = Mathf.Clamp01(((x - a.x) * dx + (y - a.y) * dy) / Mathf.Max(0.0001f, dx * dx + dy * dy));
                     float ex = a.x + dx * t - x, ey = a.y + dy * t - y;
                     best = Mathf.Min(best, ex * ex + ey * ey);
@@ -525,22 +731,24 @@ namespace Abismo.EditorTools
             float ha = b.HeadAngle;
             float jaw = Mathf.Clamp01(p["jaw"]);
 
-            // Cuello grueso con pliegues.
-            c.Ellipse(b.H(2f, -2f), 13f * HS, 10f * HS, ha, Skin, 4.4f, -0.05f, g);
+            // Cuello grueso con papada: piel abultada y pliegues.
+            c.Ellipse(b.H(2f, -2f), 13f * HS, 10f * HS, ha, Skin, 4.4f, -0.05f, g).WithBump(Patterns.Lumps(3f, 1.4f, 61), 0.7f);
+            for (int i = 0; i < 3; i++)
+                c.Fold(new[] { b.H(-9f + i * 2.5f, -6f - i * 2.2f), b.H(-3f + i * 2f, -9f - i * 2f), b.H(4f + i * 1.5f, -9.5f - i * 2f) }, g, 2, 1, Skin);
 
             // Barba de tentáculos (detrás de la mandíbula los traseros; delante los delanteros).
             DrawBeard(c, b, p, front: false);
 
-            // Cráneo de mero: frente ancha que cae hacia una boca enorme.
-            c.Ellipse(b.H(10f, 6f), 18f * HS, 13f * HS, ha - 8f, Skin, 5f, 0f, g);
-            c.Ellipse(b.H(22f, 3f), 11f * HS, 8.5f * HS, ha - 18f, Skin, 5.05f, 0f, g);
+            // Cráneo de mero: frente ancha que cae hacia una boca enorme, toda de escamas menudas.
+            c.Ellipse(b.H(10f, 6f), 18f * HS, 13f * HS, ha - 8f, Skin, 5f, 0f, g).WithBump(Patterns.Scales(4.2f, 3f, 0.9f), 0.5f);
+            c.Ellipse(b.H(22f, 3f), 11f * HS, 8.5f * HS, ha - 18f, Skin, 5.05f, 0f, g).WithBump(Patterns.Scales(3.6f, 2.6f, 0.8f), 0.45f);
             // Mandíbula inferior (gira al abrir la boca).
             Vector2 hinge = b.H(2f, -2f);
             float open = jaw * 26f;
             Vector2 J(float x, float y) => Rotate(b.H(x, y), hinge, -open);
             var mouthBack = new[] { b.H(6f, 0f), b.H(34f, -1f), J(32f, -6f), J(8f, -8f) };
             c.Poly(mouthBack, Mouth, 5.08f, 0.5f, 0f, g);
-            c.Ellipse(J(18f, -6f), 16f * HS, 5.5f * HS, ha - open - 4f, Belly, 5.12f, 0f, g);
+            c.Ellipse(J(18f, -6f), 16f * HS, 5.5f * HS, ha - open - 4f, Belly, 5.12f, 0f, g).WithDetail(Patterns.Stripes(2.4f, 1f, -1, 0.5f));
             c.Ellipse(J(16f, -3.5f), 15f * HS, 3.5f * HS, ha - open - 3f, Skin, 5.14f, 0f, g);
             // Dientes: aguja arriba y abajo.
             for (int i = 0; i < 6; i++)
@@ -550,21 +758,33 @@ namespace Abismo.EditorTools
                 Vector2 low = J(12f + i * 3.6f, -4.8f);
                 c.Capsule(low, Add(low, Dir(ha - open + 90f, 2.5f + (i % 2))), 0.8f, 0.3f, Teeth, 5.1f, 0f, g);
             }
-            // Labio superior carnoso.
+            // Labio superior carnoso con su arista húmeda y la comisura marcada.
             c.Capsule(b.H(8f, 0.8f), b.H(33f, -0.5f), 2.2f * HS, 1.6f * HS, Skin, 5.16f, 0f, g);
+            c.Ridge(new[] { b.H(12f, 2.4f), b.H(22f, 2f), b.H(31f, 1.1f) }, 1, g, Skin);
+            c.Crease(new[] { b.H(6f, -0.6f), b.H(9f, -1.6f) }, 2, g, Skin);
+            c.Glint(b.H(27f, 1.6f), g, 0, Skin);
 
-            // Branquias.
+            // Branquias: tres hendiduras curvas con el labio de arriba iluminado.
             for (int i = 0; i < 3; i++)
             {
-                for (int k = 0; k < 5; k++)
-                {
-                    Vector2 q = b.H(-4f + i * 3f + k * 0.3f, 8f - k * 2f);
-                    c.Decal(q.x, q.y, Gill);
-                }
+                var slit = new[] { b.H(-5f + i * 3.2f, 9f - i * 0.4f), b.H(-3.6f + i * 3.2f, 4f), b.H(-4.6f + i * 3.2f, -1f + i * 0.6f) };
+                c.Fold(slit, g, 2, 1, Skin);
+            }
+            // Arrugas de la frente y percebes incrustados en el cogote.
+            c.Crease(new[] { b.H(4f, 15f), b.H(10f, 16.6f), b.H(16f, 16.2f) }, 1, g, Skin);
+            c.Crease(new[] { b.H(2f, 11.5f), b.H(8f, 13f) }, 1, g, Skin);
+            for (int i = 0; i < 4; i++)
+            {
+                Vector2 at = b.H(-6f + i * 3.4f - (i == 3 ? 6f : 0f), 9f + (i % 2) * 3.5f - (i == 3 ? 7f : 0f));
+                int gb = c.NewGroup();
+                float rr = i == 1 ? 1.8f : 1.3f;
+                c.Ellipse(at, rr, rr * 0.85f, ha, Barnacle, 5.4f, 0f, gb);
+                c.Dot(Add(at, V(0.3f, 0.2f)), -2, gb, Barnacle);
             }
 
-            // Ceja ósea y el único ojo dorado.
-            c.Capsule(b.H(12f, 14f), b.H(25f, 12f), 2.6f * HS, 1.6f * HS, Brow, 5.3f, 0f, g);
+            // Ceja ósea (con bultos) y el único ojo dorado.
+            c.Capsule(b.H(12f, 14f), b.H(25f, 12f), 2.6f * HS, 1.6f * HS, Brow, 5.3f, 0f, g).WithBump(Patterns.Lumps(1.6f, 1.2f, 67), 0.8f);
+            c.Ridge(new[] { b.H(13f, 15.6f), b.H(24f, 13.6f) }, 1, g, Brow);
             Vector2 eye = b.H(19f, 9f);
             if (fx.Dead)
             {
@@ -575,7 +795,12 @@ namespace Abismo.EditorTools
                 c.Ellipse(eye, 3.8f * HS, 3.4f * HS, ha, EyeGlow, 5.25f, 0f, g);
                 c.Ellipse(Add(eye, Dir(ha, 0.6f)), 1.6f, 1.5f, ha, EyeCore, 5.26f, 0f, g);
                 c.Ellipse(Add(eye, Dir(ha, 1.2f)), 0.7f, 2.4f, ha, Pupil, 5.27f, 0f, g);
+                Vector2 wet = Add(eye, Add(Dir(ha + 90f, 2.6f), Dir(ha, -1.8f)));
+                c.Decal(wet.x, wet.y, Glint);
             }
+            // Párpado: un pliegue carnoso por encima y otro por debajo del ojo.
+            c.Fold(new[] { b.H(14.5f, 12.4f), b.H(19f, 13.2f), b.H(23.5f, 11.6f) }, g, 2, 1, Skin);
+            c.Crease(new[] { b.H(15f, 5.4f), b.H(19.5f, 4.8f), b.H(23f, 6f) }, 1, g, Skin);
 
             DrawBeard(c, b, p, front: true);
             if (p["mitre"] > 0.5f) DrawMitre(c, b, p, fx);
@@ -609,7 +834,27 @@ namespace Abismo.EditorTools
                     a = Add(a, Dir(ang, seg));
                     pts.Add(a);
                 }
-                c.Strand(pts, i == 2 || i == 3 ? 2.6f : 2.1f, 0.5f, Tentacle, isFront ? 5.2f : 4.9f, isFront ? 0f : -0.12f, g);
+                float r0 = i == 2 || i == 3 ? 2.6f : 2.1f;
+                float z = isFront ? 5.2f : 4.9f, shade = isFront ? 0f : -0.12f;
+                // Tentáculo anillado (relieve en cada tramo) que se afina hacia la punta.
+                for (int k = 0; k < n; k++)
+                {
+                    float ra = Mathf.Lerp(r0, 0.5f, k / (float)n), rb = Mathf.Lerp(r0, 0.5f, (k + 1) / (float)n);
+                    c.Capsule(pts[k], pts[k + 1], ra, rb, Tentacle, z, shade, g).WithBump(Patterns.Ridges(2.4f, 0.5f), 0.8f);
+                }
+                // Ventosas claras con el hueco oscuro por la cara de delante, y un brillo húmedo.
+                for (int k = 1; k < n - 1; k++)
+                {
+                    Vector2 d = Sub(pts[k + 1], pts[k]).normalized;
+                    Vector2 side = V(d.y, -d.x);
+                    if (side.x < 0f) side = Scale(side, -1f);
+                    float rr = Mathf.Lerp(r0, 0.5f, k / (float)n);
+                    if (rr < 0.9f) break;
+                    Vector2 q = Add(Mix(pts[k], pts[k + 1], 0.5f), Scale(side, rr * 0.55f));
+                    c.Dot(q, 2, g, Tentacle);
+                    if (rr > 1.5f) c.Dot(Add(q, Scale(side, -1f)), -1, g, Tentacle);
+                }
+                if (isFront) c.Glint(Add(pts[2], Scale(Sub(pts[1], pts[3]).normalized, 0.2f) + V(-0.8f, 0.6f)), g, 0, Tentacle);
             }
         }
 
@@ -617,10 +862,12 @@ namespace Abismo.EditorTools
         {
             int g = c.NewGroup();
             float ha = b.HeadAngle;
-            // Ínfulas (cintas) que cuelgan por detrás.
+            Vector2 hOrigin = b.H(0f, 0f);
+            // Ínfulas (cintas carmesí con galón de oro y flecos) que cuelgan por detrás.
             float ph = p["robe"];
             for (int k = 0; k < 2; k++)
             {
+                int gl = c.NewGroup();
                 Vector2 a0 = b.H(-6f + k * 3f, 14f);
                 var pts = new List<Vector2> { a0 };
                 float ang = -100f - k * 6f - p["wind"] * 50f;
@@ -630,25 +877,73 @@ namespace Abismo.EditorTools
                     a0 = Add(a0, Dir(ang, 4.6f));
                     pts.Add(a0);
                 }
-                c.Strand(pts, 2.4f, 2f, k == 0 ? Gold : GoldDark, 4.2f, -0.1f, g);
+                float sh = k == 0 ? -0.1f : -0.2f;
+                c.Strand(pts, 2.5f, 2.2f, Chasuble, 4.2f, sh, gl);
+                c.Strand(pts, 0.9f, 0.8f, Gold, 4.21f, sh, gl);
+                Vector2 end = pts[pts.Count - 1], dEnd = Sub(end, pts[pts.Count - 2]).normalized;
+                Vector2 sEnd = V(-dEnd.y, dEnd.x);
+                for (int f = -1; f <= 1; f++)
+                {
+                    Vector2 f0 = Add(end, Scale(sEnd, f * 1.4f));
+                    c.Capsule(f0, Add(f0, Scale(dEnd, 3.2f + (f == 0 ? 0.8f : 0f))), 0.6f, 0.4f, GoldDark, 4.22f, sh, gl);
+                }
             }
-            // Cuerpo de la mitra (perfil apuntado, muy alto).
+
+            // Cuerpo de la mitra (perfil apuntado, muy alto) en oro repujado: rombos abombados con un botón en cada uno.
             var shape = new[] { b.H(-9f, 13f), b.H(21f, 13f), b.H(20f, 28f), b.H(15f, 41f), b.H(7f, 51f), b.H(-1f, 42f), b.H(-8f, 28f) };
-            c.Poly(shape, Gold, 5.6f, 2.5f, 0f, g, 0.1f, 0f);
-            // Banda inferior (círculo) y costura central.
-            c.Poly(new[] { b.H(-9.5f, 12.5f), b.H(21.5f, 12.5f), b.H(21f, 19f), b.H(-9f, 19f) }, GoldDark, 5.65f, 1f, 0f, g);
-            c.Capsule(b.H(6f, 20f), b.H(7f, 49f), 0.9f, 0.6f, GoldDark, 5.66f, 0f, g);
-            // Gemas en la banda.
+            c.Poly(shape, Gold, 5.6f, 2.5f, 0f, g, 0.1f, 0f).Frame(hOrigin, ha)
+             .WithBump((u, v) => MitreDiamond(u / HS, v / HS, out _) * 0.55f, 0.9f)
+             .WithDetail((u, v) =>
+             {
+                 MitreDiamond(u / HS, v / HS, out float centre);
+                 if (centre < 0.55f) return -1;
+                 return centre > 3.1f ? 1 : 0;
+             });
+            // Bandas de los cantos y la central (aurifrisia), en oro oscuro con perlas.
+            var frontBand = new[] { b.H(21f, 13f), b.H(20f, 28f), b.H(15f, 41f), b.H(7f, 51f), b.H(7f, 46.5f), b.H(12.4f, 39.4f), b.H(16.8f, 28f), b.H(17.6f, 19f) };
+            var backBand = new[] { b.H(7f, 51f), b.H(-1f, 42f), b.H(-8f, 28f), b.H(-9f, 13f), b.H(-5.6f, 19f), b.H(-4.6f, 28f), b.H(1.6f, 40.2f), b.H(7f, 46.5f) };
+            var titulus = new[] { b.H(4.4f, 19f), b.H(9.8f, 19f), b.H(8.4f, 47f), b.H(5.6f, 47f) };
+            foreach (var band in new[] { frontBand, backBand, titulus })
+                c.Poly(band, GoldDark, 5.64f, 1f, 0f, g, 0.05f, 0f);
+            void PearlRow(Vector2 a, Vector2 bb, float spacing)
+            {
+                float l = Sub(bb, a).magnitude;
+                int count = Mathf.Max(1, Mathf.FloorToInt(l / spacing));
+                for (int i = 0; i <= count; i++) c.Dot(Mix(a, bb, i / (float)count), i % 2 == 0 ? 3 : 1, g, GoldDark);
+            }
+            PearlRow(b.H(19f, 16.5f), b.H(18.3f, 28f), 2.6f);
+            PearlRow(b.H(18.3f, 28f), b.H(13.8f, 40f), 2.6f);
+            PearlRow(b.H(13.8f, 40f), b.H(7.4f, 48.5f), 2.6f);
+            PearlRow(b.H(-7.3f, 16.5f), b.H(-6.3f, 28f), 2.6f);
+            PearlRow(b.H(-6.3f, 28f), b.H(0.2f, 41f), 2.6f);
+            PearlRow(b.H(0.2f, 41f), b.H(6.6f, 48.5f), 2.6f);
+            c.Ridge(new[] { b.H(-8.4f, 14f), b.H(-7.4f, 28f), b.H(-0.6f, 42f), b.H(6.8f, 50.2f) }, 1, g, GoldDark);
+            // Banda inferior (círculo) con cabujones alternos y perlas entre ellos.
+            c.Poly(new[] { b.H(-9.5f, 12.5f), b.H(21.5f, 12.5f), b.H(21f, 19f), b.H(-9f, 19f) }, GoldDark, 5.66f, 1f, 0f, g);
+            c.Ridge(new[] { b.H(-9f, 18.4f), b.H(20.8f, 18.4f) }, 1, g, GoldDark);
+            c.Crease(new[] { b.H(-9.2f, 13.2f), b.H(21.2f, 13.2f) }, 1, g, GoldDark);
             for (int i = 0; i < 4; i++)
             {
                 Vector2 gem = b.H(-5f + i * 7.5f, 15.8f);
-                c.Ellipse(gem, 1.3f, 1.3f, 0f, i % 2 == 0 ? SignDim : EyeGlow, 5.7f, 0f, g);
+                int gg = c.NewGroup();
+                var gm = i % 2 == 0 ? GemGreen : GemRed;
+                c.Ellipse(gem, 1.7f, 1.9f, ha, gm, 5.7f, 0f, gg);
+                c.Glint(Add(gem, Add(Dir(ha, -0.5f), Dir(ha + 90f, 0.7f))), gg, 0, gm);
+                if (i < 3)
+                {
+                    c.Dot(b.H(-1.25f + i * 7.5f, 16.6f), 3, g, GoldDark);
+                    c.Dot(b.H(-1.25f + i * 7.5f, 14.6f), 3, g, GoldDark);
+                }
             }
-            // El Signo Antiguo: estrella de cinco puntas con el ojo-llama en el centro.
+
+            // El Signo Antiguo: estrella de cinco puntas con el ojo-llama, engastada en un medallón.
             float glow = p["glow"];
             var signMat = glow > 1.05f ? SignHot : glow > 0.4f ? SignGlow : glow > 0.05f ? SignDim : SignOff;
             Vector2 sc = b.H(7f, 30f);
             float r = 6.6f * HS + (glow > 1f ? (glow - 1f) * 2f : 0f);
+            int gm2 = c.NewGroup();
+            c.Ellipse(sc, 6.6f * HS + 2.2f, 6.6f * HS + 2.2f, 0f, GoldDark, 5.72f, 0f, gm2).WithBump(Patterns.Rivets(3.2f, 0.9f, 0f, 0f), 0.5f);
+            c.Ellipse(sc, 6.6f * HS + 0.3f, 6.6f * HS + 0.3f, 0f, MitreRecess, 5.73f, 0f, gm2);
             c.Poly(Star(sc, r, r * 0.45f, ha + 90f), signMat, 5.75f, 1f, 0f, g);
             c.Capsule(Add(sc, Dir(ha + 90f, -2.4f)), Add(sc, Dir(ha + 90f, 2.6f)), 0.9f, 0.5f, glow > 0.05f ? SignDim : GoldDark, 5.8f, 0f, g);
             if (glow > 1.05f && !fx.Dead)
@@ -656,8 +951,19 @@ namespace Abismo.EditorTools
                 // Halo: el Signo arde.
                 c.Ellipse(sc, r + 5f, r + 5f, 0f, OrbHalo, 5.5f);
             }
-            Vector2 glint = b.H(1f, 40f);
-            c.Decal(glint.x, glint.y, Glint);
+            c.Glint(b.H(1f, 40f), g, 1, Gold);
+            c.Glint(b.H(-6.6f, 24f), g, 0, GoldDark);
+            c.Glint(b.H(14.6f, 18f), g, 0, GoldDark);
+        }
+
+        /// <summary>Repujado de la mitra: rejilla de rombos (diagonales cada 7 unidades de cabeza). Devuelve la altura del cojín
+        /// y en <paramref name="centre"/> la distancia a la junta más cercana (0 en la junta, 3.5 en el centro del rombo).</summary>
+        static float MitreDiamond(float x, float y, out float centre)
+        {
+            float a = Mathf.Repeat(x + y, 7f), bb = Mathf.Repeat(x - y, 7f);
+            float da = Mathf.Min(a, 7f - a), db = Mathf.Min(bb, 7f - bb);
+            centre = Mathf.Min(da, db);
+            return Mathf.Clamp01(centre / 1.6f);
         }
 
         static void DrawRollingMitre(ShadedCanvas c, Body b, Fx fx)
@@ -703,15 +1009,35 @@ namespace Abismo.EditorTools
             int g = c.NewGroup();
             var (shoulder, elbow, hand) = ArmPoints(b, p, front);
             float z = front ? 7f : 1.5f, shade = front ? 0f : -0.13f;
-            // Manga ancha del alba con puño de oro.
-            c.Capsule(shoulder, elbow, 8.5f, 6.5f, Sleeve, z, shade, g);
+            // Manga ancha del alba (tejido de lino con relieve), pliegues que caen del hombro y se arrugan en el codo.
+            c.Capsule(shoulder, elbow, 8.5f, 6.5f, Sleeve, z, shade, g).WithBump(Patterns.Weave(2f, 0.35f), 0.5f);
             Vector2 wrist = Mix(elbow, hand, 0.78f);
-            c.Capsule(elbow, wrist, 6.5f, 9.5f, Sleeve, z + 0.02f, shade, g);
-            c.Capsule(Mix(elbow, wrist, 0.84f), wrist, 9.2f, 9.7f, GoldDark, z + 0.03f, shade, g);
-            // Mano palmeada con garras.
+            c.Capsule(elbow, wrist, 6.5f, 9.5f, Sleeve, z + 0.02f, shade, g).WithBump(Patterns.Weave(2f, 0.35f), 0.5f);
+            Vector2 ua = Sub(elbow, shoulder).normalized, ub = Sub(wrist, elbow).normalized;
+            Vector2 na = V(-ua.y, ua.x), nb = V(-ub.y, ub.x);
+            c.Fold(new[] { Add(shoulder, Scale(na, 4.5f)), Add(Mix(shoulder, elbow, 0.55f), Scale(na, 2.5f)), Add(elbow, Scale(na, -1.5f)) }, g, 2, 1, Sleeve);
+            c.Fold(new[] { Add(shoulder, Scale(na, -3f)), Add(Mix(shoulder, elbow, 0.7f), Scale(na, -3.5f)) }, g, 2, 1, Sleeve);
+            for (int i = 0; i < 3; i++)
+            {
+                // Arrugas del codo: arcos cortos cruzados.
+                Vector2 m = Add(elbow, Scale(ua, -2.5f + i * 2.4f));
+                c.Fold(new[] { Add(m, Scale(na, -4.8f)), Add(Add(m, Scale(ua, 1.2f)), Scale(na, -1.5f)), Add(m, Scale(na, 1.4f)) }, g, 2, 1, Sleeve);
+            }
+            c.Fold(new[] { Add(Mix(elbow, wrist, 0.25f), Scale(nb, 2.5f)), Add(Mix(elbow, wrist, 0.9f), Scale(nb, 5.5f)) }, g, 2, 1, Sleeve);
+            c.Fold(new[] { Add(Mix(elbow, wrist, 0.35f), Scale(nb, -2.4f)), Add(Mix(elbow, wrist, 0.92f), Scale(nb, -6f)) }, g, 2, 1, Sleeve);
+            // Puño bordado: galón de oro con perlas entre dos cantos.
+            Vector2 cuff0 = Mix(elbow, wrist, 0.84f);
+            float cuffLen = Sub(wrist, cuff0).magnitude;
+            c.Capsule(cuff0, wrist, 9.2f, 9.7f, GoldDark, z + 0.03f, shade, g).WithDetail((u, v) =>
+            {
+                if (u < 0.8f || u > cuffLen - 0.8f) return 1;
+                if (Mathf.Abs(u - cuffLen * 0.5f) < 0.7f) return Mathf.Repeat(v + 0.5f, 2.6f) < 1f ? 3 : -1;
+                return 0;
+            });
+            // Mano palmeada con garras, nudillos huesudos y anillos de oro con piedra.
             Vector2 dir = Sub(hand, elbow).normalized;
             float ang = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg;
-            c.Ellipse(hand, 5f, 4f, ang, Skin, z + 0.05f, shade, g);
+            c.Ellipse(hand, 5f, 4f, ang, Skin, z + 0.05f, shade, g).WithBump(Patterns.Scales(2.6f, 2f, 0.7f), 0.5f);
             for (int i = 0; i < 3; i++)
             {
                 float fa = ang - 30f + i * 26f;
@@ -719,6 +1045,17 @@ namespace Abismo.EditorTools
                 Vector2 k1 = Add(k0, Dir(fa + 25f, 4.5f));
                 c.Capsule(k0, k1, 1.6f, 1.1f, Skin, z + 0.06f, shade, g);
                 c.Capsule(k1, Add(k1, Dir(fa + 55f, 3f)), 1f, 0.35f, Claw, z + 0.07f, shade, g);
+                c.Dot(k0, 1, g, Skin);
+                c.Dot(k1, 1, g, Skin);
+                if (i != 1)
+                {
+                    int gr = c.NewGroup();
+                    Vector2 ring = Add(k0, Dir(fa + 12f, 1.6f));
+                    Vector2 across = Dir(fa + 102f, 1.3f);
+                    c.Capsule(Sub(ring, across), Add(ring, across), 0.85f, 0.85f, Gold, z + 0.065f, shade, gr);
+                    c.Dot(ring, i == 0 ? -1 : 2, gr, Gold);
+                    c.Glint(Add(ring, V(-0.6f, 0.6f)), gr, 0, Gold);
+                }
             }
             if (!front && fx.HandGlow)
             {
@@ -745,14 +1082,27 @@ namespace Abismo.EditorTools
             int g = c.NewGroup();
             Vector2 bottom = ends.bottom, top = ends.top;
             Vector2 d = Sub(top, bottom).normalized;
+            Vector2 side = V(-d.y, d.x);
             float ang = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
-            c.Capsule(bottom, top, 1.9f, 2.1f, Iron, 6.8f, 0f, g);
-            // Anillos de oro.
+            // Asta de hierro torsionado (estría en espiral) con manchas de óxido.
+            c.Capsule(bottom, top, 1.9f, 2.1f, Iron, 6.8f, 0f, g)
+             .WithDetail((u, v) => Mathf.Repeat(u + v * 2.2f, 5f) < 1.2f ? -1 : PixelCanvas.ValueNoise(u / 4f, v, 0, 83) > 0.78f ? -1 : 0);
+            // Regatón de oro en la punta inferior.
+            c.Capsule(bottom, Add(bottom, Scale(d, 5f)), 2.3f, 2.6f, GoldDark, 6.82f, 0f, g).WithBump(Patterns.Ridges(2f, 0.6f), 1f);
+            // Anillos de oro labrados.
             for (int i = 1; i <= 3; i++)
             {
                 Vector2 ring = Add(bottom, Scale(d, StaffLength * (0.25f + i * 0.17f)));
-                c.Capsule(Sub(ring, Scale(d, 1.5f)), Add(ring, Scale(d, 1.5f)), 2.8f, 2.8f, Gold, 6.85f, 0f, g);
+                int gr = c.NewGroup();
+                c.Capsule(Sub(ring, Scale(d, 1.5f)), Add(ring, Scale(d, 1.5f)), 2.8f, 2.8f, Gold, 6.85f, 0f, gr).WithBump(Patterns.Ridges(1.5f, 0.5f), 1f);
+                c.Glint(Add(ring, Scale(side, 1.2f)), gr, 0, Gold);
             }
+            // Nudo (manzana) bajo el remate, con una gema.
+            Vector2 knop = Sub(top, Scale(d, 15f));
+            int gk = c.NewGroup();
+            c.Ellipse(knop, 4.2f, 3.4f, ang, Gold, 6.88f, 0f, gk).WithBump(Patterns.Rivets(2.4f, 0.8f, 0f, 0f), 0.6f);
+            c.Crease(new[] { Add(knop, Scale(side, -3.6f)), Add(knop, Scale(side, 3.6f)) }, 1, gk, Gold);
+            c.Ellipse(Add(knop, Scale(side, 0.8f)), 1.3f, 1.4f, ang, GemRed, 6.9f, 0f, c.NewGroup());
             // Uñas de ancla bajo el remate.
             Vector2 crown = Sub(top, Scale(d, 6f));
             for (int s = -1; s <= 1; s += 2)
@@ -767,9 +1117,12 @@ namespace Abismo.EditorTools
                     fluke.Add(q);
                 }
                 c.Strand(fluke, 1.8f, 0.6f, Gold, 6.9f, 0f, g);
+                c.Ridge(fluke, 1, g, Gold);
             }
-            // Espiral (cayado) que se enrosca hacia delante.
+            // Voluta (cayado) que se enrosca hacia delante: oro labrado con una acanaladura y cuentas en el canto.
             var spiral = new List<Vector2>();
+            var groove = new List<Vector2>();
+            var beads = new List<Vector2>();
             Vector2 start = top;
             float radius = 9f;
             Vector2 center = Add(start, Dir(ang - 90f, radius));
@@ -779,10 +1132,30 @@ namespace Abismo.EditorTools
                 float a = ang + 90f - t * 330f;
                 float r = Mathf.Lerp(radius, 3.5f, t);
                 spiral.Add(Add(center, Dir(a, r)));
+                if (t < 0.85f) groove.Add(Add(center, Dir(a, r + 0.6f)));
+                if (i % 2 == 0 && t < 0.8f) beads.Add(Add(center, Dir(a, r + Mathf.Lerp(2.4f, 1.6f, t))));
             }
             c.Strand(spiral, 2.4f, 1.3f, Gold, 6.9f, 0f, g);
-            // Brasa verde en el centro de la espiral.
+            c.Crease(groove, 1, g, Gold);
+            foreach (var bead in beads) c.Dot(bead, 2, g, Gold);
+            // Crochets (hojas de oro) en el lomo de la voluta.
+            for (int i = 0; i < 3; i++)
+            {
+                float a = ang + 90f - (0.12f + i * 0.2f) * 330f;
+                float r = Mathf.Lerp(radius, 3.5f, 0.12f + i * 0.2f) + 2.6f;
+                Vector2 leaf = Add(center, Dir(a, r));
+                int gl = c.NewGroup();
+                c.Capsule(leaf, Add(leaf, Dir(a + 40f, 2.2f)), 1.2f, 0.4f, Gold, 6.89f, 0f, gl);
+            }
+            c.Glint(Add(center, Dir(ang + 135f, radius + 0.4f)), g, 1, Gold);
+            // Gema verde en el centro de la espiral, sujeta por cuatro garras.
             float orb = p["orb"];
+            float prong = 2.6f * Mathf.Max(0.6f, orb) + 1.4f;
+            for (int i = 0; i < 4; i++)
+            {
+                Vector2 q = Add(center, Dir(ang + 45f + i * 90f, prong));
+                c.Capsule(q, Add(center, Dir(ang + 45f + i * 90f, prong - 1.6f)), 0.9f, 0.45f, GoldDark, 6.98f, 0f, g);
+            }
             if (orb > 0.05f)
             {
                 if (orb > 1.3f) c.Ellipse(center, 4f * orb + 3f, 4f * orb + 3f, 0f, OrbHalo, 6.7f);

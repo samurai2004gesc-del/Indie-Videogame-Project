@@ -5,12 +5,14 @@ using static Abismo.EditorTools.Rig;
 namespace Abismo.EditorTools
 {
     /// <summary>
-    /// Sectario de la Orden Esotérica de Dagón: túnica larga violeta con capirote puntiagudo, máscara de pez dorada,
-    /// esclavina con ribetes de oro, cíngulo de cuerda con medalla y un báculo de madera de deriva coronado por una
-    /// garra de oro que sujeta una brasa naranja-púrpura (el ÚNICO acento de su paleta). Mira a la derecha.
+    /// Cultista del Abismo (Orden Esotérica de Dagón): encorvado bajo una capucha de paño pardo con la cara hundida en la
+    /// sombra (solo dos ascuas por ojos), esclavina raída, gabán gris abierto sobre una túnica carmesí de bajo embarrado,
+    /// cinturón de cuero con bolsa y daga ritual de hueso, colgante de hueso en el pecho, pies vendados y un báculo de
+    /// madera retorcida con una garra de hierro que encierra una brasa naranja-púrpura (el acento de su paleta) y amuletos
+    /// de hueso colgando. Mira a la derecha.
     ///
-    /// La túnica y la esclavina son "campanas" (<see cref="Bell"/>): una superficie con volumen calculada por píxel
-    /// con pliegues, ribete en el bajo y cortes en el borde, que se inclina con el cuerpo (también tumbado al morir).
+    /// La túnica, el gabán y la esclavina son "campanas" (<see cref="Bell"/>): una superficie con volumen calculada por
+    /// píxel con pliegues, bajo y cortes en el borde, que se inclina con el cuerpo (también tumbado al morir).
     ///
     /// Convenciones de las poses (grados):
     ///  - brazos: 0 = colgando, 90 = hacia delante, 180 = arriba, -90 = hacia atrás (Rig.Limb)
@@ -28,14 +30,22 @@ namespace Abismo.EditorTools
         // Materiales
         // ------------------------------------------------------------------
 
-        static readonly PixelMaterial Robe = new PixelMaterial(Ramp.Make("342a42", 5, 0.1f, 0.3f, 1.8f)) { Ambient = 0.2f, Rim = 0.7f, Dither = 0.04f };
-        static readonly PixelMaterial HoodInner = new PixelMaterial(new[] { PixelCanvas.Hex("0d0912"), PixelCanvas.Hex("181020") }) { Ambient = 0.45f, Rim = 0f, Dither = 0f };
-        static readonly PixelMaterial Trim = new PixelMaterial(Ramp.Make("85632a", 4, 0.1f, 0.35f, 1.5f)) { Gloss = 0.45f, Ambient = 0.26f, Rim = 0.45f, Dither = 0f };
-        static readonly PixelMaterial MaskGold = new PixelMaterial(Ramp.Make("b48b3a", 5, 0.12f, 0.3f, 1.55f)) { Gloss = 0.75f, Ambient = 0.3f, Rim = 0.5f, Dither = 0f };
-        static readonly PixelMaterial MaskDark = new PixelMaterial(Ramp.Make("4a3115", 3, 0.08f)) { Ambient = 0.45f, Dither = 0f };
-        static readonly PixelMaterial Skin = new PixelMaterial(Ramp.Make("7b8b77", 4, 0.1f)) { Ambient = 0.3f, Rim = 0.5f, Dither = 0f };
+        // Túnica carmesí (debajo), gabán gris abierto encima, capucha y esclavina de paño pardo rojizo.
+        static readonly PixelMaterial Robe = new PixelMaterial(Ramp.Make("6e1c27", 5, 0.1f, 0.3f, 1.7f)) { Ambient = 0.2f, Rim = 0.6f, Dither = 0f, BandDither = 0.16f };
+        static readonly PixelMaterial RobeDirt = new PixelMaterial(Ramp.Make("3a2224", 4, 0.08f, 0.4f, 1.5f)) { Ambient = 0.24f, Rim = 0.4f, Dither = 0f };
+        static readonly PixelMaterial Coat = new PixelMaterial(Ramp.Make("363a45", 5, 0.1f, 0.32f, 1.55f)) { Ambient = 0.18f, Rim = 0.7f, Dither = 0f, BandDither = 0.16f };
+        static readonly PixelMaterial HoodCloth = new PixelMaterial(Ramp.Make("4f3127", 5, 0.1f, 0.3f, 1.5f)) { Ambient = 0.18f, Rim = 0.7f, Dither = 0f, BandDither = 0.16f };
+        static readonly PixelMaterial HoodDark = new PixelMaterial(Ramp.Make("3a2420", 4, 0.08f, 0.4f, 1.5f)) { Ambient = 0.24f, Rim = 0.5f, Dither = 0f };
+        static readonly PixelMaterial HoodInner = new PixelMaterial(new[] { PixelCanvas.Hex("08060b"), PixelCanvas.Hex("120c14") }) { Ambient = 0.45f, Rim = 0f, Dither = 0f };
+        static readonly PixelMaterial Leather = new PixelMaterial(Ramp.Make("4a3326", 4, 0.08f, 0.38f, 1.55f)) { Ambient = 0.28f, Rim = 0.5f, Gloss = 0.15f, Dither = 0f };
+        static readonly PixelMaterial Bone = new PixelMaterial(Ramp.Make("b3a88a", 4, 0.08f, 0.4f, 1.3f)) { Ambient = 0.32f, Rim = 0.5f, Dither = 0f, Gloss = 0.2f };
+        static readonly PixelMaterial Iron = new PixelMaterial(Ramp.Make("444046", 4, 0.06f, 0.38f, 1.6f))
+        {
+            Gloss = 0.5f, Ambient = 0.28f, Rim = 0.55f, Dither = 0f, SpecularAt = 0.9f, Specular = PixelCanvas.Hex("e8e0d8"),
+        };
+        static readonly PixelMaterial Skin = new PixelMaterial(Ramp.Make("8a8f80", 4, 0.1f, 0.36f, 1.35f)) { Ambient = 0.3f, Rim = 0.5f, Dither = 0f };
+        static readonly PixelMaterial Bandage = new PixelMaterial(Ramp.Make("7a6c58", 4, 0.08f, 0.38f, 1.4f)) { Ambient = 0.3f, Rim = 0.4f, Dither = 0f };
         static readonly PixelMaterial Wood = new PixelMaterial(Ramp.Make("4e382a", 4, 0.08f)) { Ambient = 0.26f, Rim = 0.6f, Gloss = 0.12f, Dither = 0f };
-        static readonly PixelMaterial Rope = new PixelMaterial(Ramp.Make("6b5639", 4, 0.08f)) { Ambient = 0.3f, Dither = 0f };
         static readonly PixelMaterial DeadGlass = new PixelMaterial(Ramp.Make("3b3445", 4, 0.06f)) { Gloss = 0.7f, Ambient = 0.3f, Rim = 0.5f, Dither = 0f };
 
         // Brasa del báculo: de fuera hacia el núcleo.
@@ -48,7 +58,7 @@ namespace Abismo.EditorTools
         static readonly PixelMaterial EmberMid = PixelMaterial.Glow("ff7a2c");
         static readonly PixelMaterial EmberCool = PixelMaterial.Glow("b0389a");
         static readonly PixelMaterial EyeGlow = PixelMaterial.Glow("ff9a46");
-        static readonly PixelMaterial EyeDim = PixelMaterial.Glow("8a3a24");
+        static readonly PixelMaterial EyeDim = PixelMaterial.Glow("b4472a");
         static readonly PixelMaterial FlashCore = PixelMaterial.Glow("fff6e0");
         static readonly PixelMaterial FlashMid = PixelMaterial.Glow("ffa040");
         static readonly PixelMaterial SmearCore = PixelMaterial.Glow("ffe2a0");
@@ -62,7 +72,7 @@ namespace Abismo.EditorTools
         // ------------------------------------------------------------------
 
         static Pose Idle => new Pose().With(
-            ("lean", 4f), ("head", 0f), ("crouch", 0f),
+            ("lean", 8f), ("head", 3f), ("crouch", 0f),
             ("armF1", 30f), ("armF2", 75f), ("staff", 88f), ("grip", 27f), ("plant", 1f),
             ("armB1", -6f), ("armB2", 12f),
             ("orb", 1f), ("fFx", 5f), ("fBx", -1.5f));
@@ -85,7 +95,7 @@ namespace Abismo.EditorTools
         ShadedCanvas DrawIdle(int f)
         {
             float t = f / 6f * Mathf.PI * 2f;
-            var p = Idle.With(("crouch", 0.5f - 0.5f * Mathf.Cos(t)), ("lean", 4f + 0.8f * Mathf.Sin(t)), ("head", 1.5f * Mathf.Sin(t - 0.6f)),
+            var p = Idle.With(("crouch", 0.5f - 0.5f * Mathf.Cos(t)), ("lean", 8f + 0.8f * Mathf.Sin(t)), ("head", 3f + 1.5f * Mathf.Sin(t - 0.6f)),
                               ("hood", 0.7f * Mathf.Sin(t - 1.2f)), ("sway", 0.08f * Mathf.Sin(t + 0.5f)), ("rope", 0.6f * Mathf.Sin(t - 1f)),
                               ("fold", 0.25f * Mathf.Sin(t)), ("armB2", 12f + 3f * Mathf.Sin(t - 0.8f)),
                               ("orb", 1f + 0.07f * Mathf.Sin(t * 2f)));
@@ -251,7 +261,7 @@ namespace Abismo.EditorTools
             var handB = Add(wristB, Scale(Norm(Sub(wristB, elbowB)), 2f));
 
             int gRobe = c.NewGroup(), gMantle = c.NewGroup(), gHood = c.NewGroup(), gMask = c.NewGroup();
-            int gArmF = c.NewGroup(), gArmB = c.NewGroup(), gStaff = c.NewGroup(), gRope = c.NewGroup();
+            int gArmF = c.NewGroup(), gArmB = c.NewGroup(), gStaff = c.NewGroup(), gCoat = c.NewGroup();
 
             // --- Pies descalzos (asoman bajo el bajo de la túnica) ---
             var footF = V(hip.x + p["fFx"], p["fFy"]);
@@ -262,14 +272,14 @@ namespace Abismo.EditorTools
                 DrawFoot(c, footF, 3.5f, 0f, c.NewGroup());
             }
 
-            // --- Túnica ---
+            // --- Túnica carmesí (debajo) ---
             float standHemF = 9f + crouch * 0.25f + Mathf.Max(0f, -sway) * 3f;
             float standHemB = 12.5f + sway * 3.5f + crouch * 0.3f;
             var hemCenter = Mix(V(hip.x - 1f, -1.5f), V(hip.x - 16f, 2.5f), lie);
             var robe = new Bell(chest, hemCenter, Mathf.Lerp(5.6f, 5f, lie), Mathf.Lerp(6.6f, 6f, lie),
                                 Mathf.Lerp(standHemF, 4f, lie), Mathf.Lerp(standHemB, 6.5f, lie))
             {
-                Folds = 4f, FoldAmp = 0.45f, FoldPhase = p["fold"], Ground = 0f, Teeth = 7f, TeethDepth = 1.3f, Seed = 5,
+                Folds = 4f, FoldAmp = 0.7f, FoldPhase = p["fold"], Ground = 0f, Teeth = 7f, TeethDepth = 1.6f, Seed = 5,
                 BackLift = Mathf.Max(0f, sway) * 2.2f,
             };
             float lead = Mathf.Max(p["fFx"], p["fBx"]);
@@ -280,30 +290,69 @@ namespace Abismo.EditorTools
                 robe.LiftAmt = 1.2f + leadLift * 0.9f;
                 robe.LiftW = 4.5f;
             }
-            AddBell(c, robe, Robe, 4f, gRobe);
-            c.Custom(robe.MinX, robe.MinY, robe.MaxX, robe.MaxY, robe.HemBand(1.6f, 3.1f), Trim, 4.05f, 0f, gRobe);
-            float tBelt = robe.TAt(Add(hip, Dir(ta, 1f)));
-            c.Custom(robe.MinX, robe.MinY, robe.MaxX, robe.MaxY, robe.Stripe(0.74f, 0.75f, tBelt), Trim, 4.04f, 0f, gRobe);
+            AddBell(c, robe, Robe, 4f, gRobe).WithBump(Patterns.Weave(2f, 0.3f), 0.25f);
+            // Bajo raído y sucio: franja oscura de barro con desgarrones.
+            c.Custom(robe.MinX, robe.MinY, robe.MaxX, robe.MaxY, robe.HemBand(0f, 2.2f), RobeDirt, 4.02f, 0f, gRobe);
+            foreach (var fold in robe.Valleys(0.35f)) c.Fold(fold, gRobe, 2, 1, Robe);
 
-            // --- Cíngulo de cuerda con medalla ---
+            // --- Gabán gris abierto por delante (deja ver la túnica roja) ---
+            float coatGround = Mathf.Lerp(3.2f, 0f, lie);
+            var coat = new Bell(Add(chest, Dir(ta, 0.5f)), hemCenter, Mathf.Lerp(3.4f, 3f, lie), Mathf.Lerp(7.2f, 6.6f, lie),
+                                Mathf.Lerp(standHemF * 0.3f, 1.5f, lie), Mathf.Lerp(standHemB + 0.8f, 7f, lie))
+            {
+                Folds = 3f, FoldAmp = 0.75f, FoldPhase = p["fold"] * 0.8f + 0.7f, Ground = coatGround, Teeth = 6f, TeethDepth = 2.4f, Seed = 9,
+                BackLift = Mathf.Max(0f, sway) * 2.6f, Flare = 0.25f,
+            };
+            AddBell(c, coat, Coat, 4.3f, gCoat).WithBump(Patterns.Weave(2f, 0.35f), 0.25f);
+            foreach (var fold in coat.Valleys(0.3f)) c.Fold(fold, gCoat, 2, 1, Coat);
+            // Canto delantero del gabán (vuelta de la solapa) iluminado.
+            var lapel = new List<Vector2>();
+            for (int i = 0; i <= 5; i++)
+            {
+                float t = 0.05f + i * 0.17f;
+                lapel.Add(coat.Point(t, coat.FrontAt(t) - 0.6f));
+            }
+            c.Ridge(lapel, 1, gCoat, Coat);
+
+            // --- Cinturón de cuero con hebilla, bolsa y la daga ritual envainada ---
             var belt = Add(hip, Dir(ta, 1f));
             float bt = robe.TAt(belt);
-            var beltBack = robe.Point(bt, -robe.BackAt(bt) + 0.5f);
+            var beltBack = coat.Point(bt, -coat.BackAt(bt) + 0.4f);
             var beltFront = robe.Point(bt, robe.FrontAt(bt) - 0.3f);
-            c.Capsule(beltBack, beltFront, 1.1f, 1.1f, Rope, 4.5f, 0f, gRope);
-            var knot = robe.Point(bt, robe.FrontAt(bt) * 0.55f);
+            int gBelt = c.NewGroup();
+            c.Capsule(beltBack, beltFront, 1.2f, 1.2f, Leather, 4.6f, 0f, gBelt).WithDetail(Patterns.Stripes(3f, 1f, 1, 0.5f));
+            var buckle = robe.Point(bt, robe.FrontAt(bt) * 0.45f);
+            c.Ellipse(buckle, 1.5f, 1.6f, 0f, Iron, 4.7f, 0f, c.NewGroup()).WithDetail((u, v) => u * u + v * v < 0.5f ? -2 : 0);
             float rs = p["rope"];
-            var ropeEnd = Add(knot, V(0.8f - rs * 2.2f + lean * 0.05f, -11f + Mathf.Abs(rs) * 0.6f));
-            if (lie > 0.5f) ropeEnd = Add(knot, V(2f, -3f));
-            var ropeCtrl = Add(Mix(knot, ropeEnd, 0.5f), V(1.5f - rs * 0.8f, 0f));
-            c.Ellipse(knot, 1.6f, 1.4f, 0f, Rope, 4.6f, 0f, gRope);
-            c.Strand(Bezier(knot, ropeCtrl, ropeEnd, 6), 0.8f, 0.7f, Rope, 4.55f, 0f, gRope);
-            var ropeEnd2 = Add(knot, V(-0.6f - rs * 1.6f, -7f));
-            if (lie > 0.5f) ropeEnd2 = Add(knot, V(-2f, -2f));
-            c.Strand(Bezier(knot, Add(Mix(knot, ropeEnd2, 0.5f), V(-0.8f, 0f)), ropeEnd2, 5), 0.75f, 0.65f, Rope, 4.52f, -0.06f, gRope);
-            // Medalla de Dagón colgando del cabo largo.
-            c.Ellipse(Add(ropeEnd, V(0f, -1.6f)), 1.9f, 2.1f, 0f, MaskGold, 4.7f, 0f, c.NewGroup());
-            c.Decal(ropeEnd.x, ropeEnd.y - 1.8f, PixelCanvas.Hex("3a2410"));
+            // Bolsa colgada a la espalda.
+            var pouch = Add(robe.Point(bt, -robe.BackAt(bt) * 0.45f), V(-0.4f + rs * 0.3f, -3f));
+            int gPouch = c.NewGroup();
+            c.Ellipse(pouch, 2.4f, 2.8f, 8f, Leather, 4.65f, -0.04f, gPouch);
+            c.Crease(new[] { Add(pouch, V(-2f, 1f)), Add(pouch, V(2f, 1.3f)) }, 2, gPouch, Leather);
+            c.Dot(Add(pouch, V(0.2f, 0.5f)), 2, gPouch, Leather);
+            // Daga ritual curva envainada en la cadera, con empuñadura de hueso.
+            if (lie < 0.5f)
+            {
+                int gD = c.NewGroup();
+                var hilt = Add(robe.Point(bt, robe.FrontAt(bt) * 0.1f), V(0.5f, 1.8f));
+                var tipD = Add(hilt, V(-2.6f + rs * 0.6f, -10f));
+                c.Capsule(hilt, Mix(hilt, tipD, 0.3f), 0.8f, 0.7f, Bone, 4.75f, 0f, gD).WithDetail(Patterns.Stripes(1.6f, 0.8f, -1, 0f));
+                c.Strand(Bezier(Mix(hilt, tipD, 0.3f), Add(Mix(hilt, tipD, 0.65f), V(1.2f, 0f)), tipD, 5), 1.1f, 0.5f, Leather, 4.72f, 0f, gD);
+                c.Capsule(Add(Mix(hilt, tipD, 0.3f), V(-1.4f, 0.2f)), Add(Mix(hilt, tipD, 0.3f), V(1.4f, -0.2f)), 0.55f, 0.55f, Iron, 4.76f, 0f, gD);
+                c.Glint(Add(Mix(hilt, tipD, 0.3f), V(0.6f, 0f)), gD, 0, Iron);
+            }
+
+            // --- Colgante de hueso sobre el pecho (el Signo grabado) ---
+            {
+                int gA = c.NewGroup();
+                var cordTop = Add(neck, Dir(ta - 90f, 1.6f));
+                var amulet = Add(Add(chest, Dir(ta - 90f, 4.4f)), Dir(ta, -2.2f));
+                if (lie > 0.5f) amulet = Add(chest, V(1f, -3f));
+                c.Capsule(cordTop, amulet, 0.4f, 0.4f, Leather, 6.4f, 0f, gA);
+                c.Ellipse(amulet, 1.7f, 2f, -lean, Bone, 6.45f, 0f, gA);
+                c.Dot(amulet, -2, gA, Bone);
+                c.Glint(Add(amulet, V(-0.6f, 0.9f)), gA, 0, Bone);
+            }
 
             // --- Brazo trasero (lejos de la luz) ---
             float zArmB = 1f;
@@ -314,13 +363,14 @@ namespace Abismo.EditorTools
             var mantleTop = Add(neck, Dir(ta, 0.5f));
             var mantle = new Bell(mantleTop, Add(mantleTop, Dir(mantleDir, 10.5f)), 3.6f, 4.6f, 8.6f, 9.6f + Mathf.Max(0f, sway) * 1.5f)
             {
-                Folds = 3f, FoldAmp = 0.3f, FoldPhase = p["fold"] * 0.6f + 1f, Teeth = 5f, TeethDepth = 1.7f, Seed = 2, Flare = 0.45f,
+                Folds = 3f, FoldAmp = 0.6f, FoldPhase = p["fold"] * 0.6f + 1f, Teeth = 5f, TeethDepth = 2.2f, Seed = 2, Flare = 0.45f,
             };
             if (lie > 0.5f) mantle.Ground = 0f;
-            AddBell(c, mantle, Robe, 6f, gMantle);
-            c.Custom(mantle.MinX, mantle.MinY, mantle.MaxX, mantle.MaxY, mantle.HemBand(1.1f, 2.2f), Trim, 6.05f, 0f, gMantle);
+            AddBell(c, mantle, HoodCloth, 6f, gMantle).WithBump(Patterns.Weave(2f, 0.35f), 0.25f);
+            c.Custom(mantle.MinX, mantle.MinY, mantle.MaxX, mantle.MaxY, mantle.HemBand(0f, 1.4f), HoodDark, 6.05f, 0f, gMantle);
+            foreach (var fold in mantle.Valleys(0.15f)) c.Fold(fold, gMantle, 2, 1, HoodCloth);
 
-            // --- Capucha puntiaguda con máscara de pez ---
+            // --- Capucha con la cara en sombra ---
             DrawHood(c, head, hr, p["hood"], gHood, gMask, fx);
 
             // --- Báculo ---
@@ -357,24 +407,26 @@ namespace Abismo.EditorTools
             return l > 0.0001f ? V(v.x / l, v.y / l) : V(1f, 0f);
         }
 
-        static void AddBell(ShadedCanvas c, Bell b, PixelMaterial m, float z, int group)
-        {
-            c.Custom(b.MinX, b.MinY, b.MaxX, b.MaxY, b.Body(), m, z, 0f, group);
-        }
+        static ShadedCanvas.Shape AddBell(ShadedCanvas c, Bell b, PixelMaterial m, float z, int group) =>
+            c.Custom(b.MinX, b.MinY, b.MaxX, b.MaxY, b.Body(), m, z, 0f, group).Frame(V(b.Tx, b.Ty), Mathf.Atan2(b.Ay, b.Ax) * Mathf.Rad2Deg);
 
         void DrawFoot(ShadedCanvas c, Vector2 heel, float z, float shade, int group)
         {
-            c.Capsule(Add(heel, V(0.2f, 1.8f)), Add(heel, V(0.6f, 7.5f)), 1.6f, 1.9f, Skin, z - 0.05f, shade - 0.08f, group);
+            // Pies envueltos en vendas sucias (tiras en diagonal), con los dedos huesudos asomando.
+            c.Capsule(Add(heel, V(0.2f, 1.8f)), Add(heel, V(0.6f, 7.5f)), 1.6f, 1.9f, Bandage, z - 0.05f, shade - 0.08f, group)
+             .WithDetail((u, v) => Mathf.Repeat(u + v * 0.8f, 2.4f) < 0.8f ? -1 : 0);
             c.Poly(new[] { Add(heel, V(-1.7f, 2.8f)), Add(heel, V(2.2f, 3f)), Add(heel, V(5.4f, 1.4f)), Add(heel, V(6.2f, 0.2f)), Add(heel, V(-1.9f, 0f)) },
-                   Skin, z, 1.2f, shade, group);
+                   Bandage, z, 1.2f, shade, group).WithDetail((u, v) => Mathf.Repeat(u * 0.7f - v, 2.6f) < 0.8f ? -1 : 0);
+            c.Capsule(Add(heel, V(4.6f, 0.9f)), Add(heel, V(6.6f, 0.6f)), 0.75f, 0.6f, Skin, z + 0.02f, shade, group);
+            c.Dot(Add(heel, V(6.2f, 1f)), 1, group, Skin);
         }
 
-        /// <summary>Brazo con manga acampanada y ribete dorado; la mano agarra el báculo o se abre (palma palmeada).</summary>
+        /// <summary>Brazo con manga del gabán (vuelta oscura en el puño); mano huesuda con un anillo de hierro.</summary>
         void DrawArm(ShadedCanvas c, Vector2 shoulder, Vector2 elbow, Vector2 wrist, Vector2 hand, float z, float shade, int group,
                      bool palm, float zSleeve = -1f, bool grips = false)
         {
             if (zSleeve < 0f) zSleeve = z + 0.5f;
-            c.Capsule(shoulder, elbow, 2.9f, 2.6f, Robe, z, shade, group);
+            c.Capsule(shoulder, elbow, 2.9f, 2.6f, Coat, z, shade, group).WithBump(Patterns.Weave(2f, 0.3f), 0.25f);
             var d = Norm(Sub(wrist, elbow));
             var s = V(-d.y, d.x);
             var open = Add(wrist, Scale(d, 1.4f));
@@ -385,83 +437,138 @@ namespace Abismo.EditorTools
             var e1 = Add(Add(elbow, Scale(s, 2.7f)), Scale(d, -1f));
             var e2 = Add(Add(elbow, Scale(s, -2.7f)), Scale(d, -1f));
             var belly = c1.y < c2.y ? Add(Mix(e1, c1, 0.55f), V(0f, -1.2f)) : Add(Mix(e2, c2, 0.55f), V(0f, -1.2f));
-            if (c1.y < c2.y) c.Poly(new[] { e1, belly, c1, c2, e2 }, Robe, zSleeve, 2f, shade, group, 0.1f, 0f);
-            else c.Poly(new[] { e1, c1, c2, belly, e2 }, Robe, zSleeve, 2f, shade, group, 0.1f, 0f);
-            // Interior oscuro de la manga y ribete.
+            if (c1.y < c2.y) c.Poly(new[] { e1, belly, c1, c2, e2 }, Coat, zSleeve, 2f, shade, group, 0.1f, 0f);
+            else c.Poly(new[] { e1, c1, c2, belly, e2 }, Coat, zSleeve, 2f, shade, group, 0.1f, 0f);
+            c.Fold(new[] { Add(elbow, Scale(s, 0.6f)), Add(Mix(elbow, open, 0.8f), Scale(s, 1.6f)) }, group, 2, 1, Coat);
+            // Interior oscuro de la manga y vuelta del puño (paño pardo, raída).
             c.Capsule(Add(Mix(c1, c2, 0.5f), Scale(d, -0.4f)), Add(Mix(c1, c2, 0.5f), Scale(d, -0.4f)), 2.2f, 2.2f, HoodInner, zSleeve + 0.02f, 0f, group);
-            c.Capsule(c1, c2, 0.85f, 0.85f, Trim, zSleeve + 0.05f, shade, group);
+            c.Capsule(c1, c2, 0.95f, 0.95f, HoodDark, zSleeve + 0.05f, shade, group);
             float zHand = grips ? 10.6f : zSleeve + 0.1f;
-            c.Ellipse(hand, 2.1f, 1.9f, 0f, Skin, zHand, shade, group);
+            if (grips)
+            {
+                // Puño cerrado sobre el báculo: tres falanges con los nudillos marcados y un anillo de hierro.
+                c.Ellipse(hand, 1.8f, 1.7f, 0f, Skin, zHand, shade, group);
+                for (int i = -1; i <= 1; i++)
+                {
+                    var k0 = Add(hand, Add(Scale(d, i * 1.15f), Scale(s, -1.1f)));
+                    var k1 = Add(hand, Add(Scale(d, i * 1.15f), Scale(s, 1.5f)));
+                    c.Capsule(k0, k1, 0.62f, 0.55f, Skin, zHand + 0.02f + i * 0.001f, shade - (i == 0 ? 0.06f : 0f), group);
+                    c.Dot(k1, 1, group, Skin);
+                }
+                int gr = c.NewGroup();
+                var ring = Add(hand, Add(Scale(d, 1.15f), Scale(s, 0.4f)));
+                c.Capsule(Add(ring, Scale(d, -0.1f)), Add(ring, Scale(d, 0.1f)), 0.75f, 0.75f, Iron, zHand + 0.05f, shade, gr);
+                c.Glint(ring, gr, 0, Iron);
+                return;
+            }
+            c.Ellipse(hand, 1.9f, 1.7f, 0f, Skin, zHand, shade, group);
+            var up = d;
             if (palm)
             {
                 // Mano abierta con dedos largos y membranas.
-                var up = d;
                 for (int i = -1; i <= 1; i++)
                 {
                     var dir = Norm(Add(up, Scale(s, i * 0.55f)));
-                    c.Capsule(Add(hand, Scale(dir, 1.2f)), Add(hand, Scale(dir, 4.6f - Mathf.Abs(i) * 0.6f)), 0.65f, 0.45f, Skin, zHand + 0.05f, shade, group);
+                    c.Capsule(Add(hand, Scale(dir, 1.2f)), Add(hand, Scale(dir, 4.6f - Mathf.Abs(i) * 0.6f)), 0.6f, 0.4f, Skin, zHand + 0.05f, shade, group);
+                    c.Dot(Add(hand, Scale(dir, 2.6f)), 1, group, Skin);
                 }
                 c.Poly(new[] { Add(hand, Scale(Norm(Add(up, Scale(s, -0.55f))), 3.4f)), Add(hand, Scale(up, 3.6f)), Add(hand, Scale(Norm(Add(up, Scale(s, 0.55f))), 3.4f)), hand },
                        Skin, zHand + 0.02f, 0.5f, shade - 0.12f, group);
             }
+            else
+            {
+                // Dedos largos y huesudos que cuelgan, con los nudillos marcados.
+                for (int i = -1; i <= 1; i++)
+                {
+                    var dir = Norm(Add(up, Scale(s, i * 0.35f)));
+                    var k = Add(hand, Scale(dir, 1.6f));
+                    c.Capsule(k, Add(k, Scale(Norm(Add(dir, Scale(s, 0.25f))), 3f - Mathf.Abs(i) * 0.5f)), 0.55f, 0.35f, Skin, zHand + 0.03f, shade, group);
+                    c.Dot(k, 1, group, Skin);
+                }
+            }
+            int g2 = c.NewGroup();
+            var ring2 = Add(hand, Scale(Norm(Add(up, Scale(s, 0.35f))), 1.9f));
+            c.Capsule(ring2, ring2, 0.7f, 0.7f, Iron, zHand + 0.06f, shade, g2);
         }
 
         void DrawHood(ShadedCanvas c, Vector2 head, float hr, float lag, int gHood, int gMask, Fx fx)
         {
             Vector2 H(float x, float y) => Add(head, Rotate(V(x, y), V(0f, 0f), hr));
+            // Capucha de paño pardo con la punta caída hacia atrás (se mueve con retraso).
             var shell = new[]
             {
-                H(-6.4f, -7.6f), H(-8.6f, -3f), H(-8.8f, 1.5f), H(-7.6f, 6.5f), H(-5.6f - lag * 0.5f, 12f),
-                H(-3.6f - lag * 1.6f, 18.6f - Mathf.Abs(lag) * 0.3f), H(-1.7f - lag * 0.6f, 13.6f), H(1.8f, 9f), H(5.2f, 6.6f),
+                H(-6.4f, -7.6f), H(-8.6f, -3f), H(-8.8f, 1.5f), H(-7.8f, 6f), H(-6.4f - lag * 0.5f, 10.2f),
+                H(-6.2f - lag * 1.6f, 14.4f - Mathf.Abs(lag) * 0.3f), H(-2.6f - lag * 0.6f, 11.6f), H(1.8f, 8.6f), H(5.2f, 6.6f),
                 H(7.3f, 5.5f), H(6.5f, 3.8f), H(6.7f, 0f), H(6.2f, -4.5f), H(4.6f, -7f), H(1.5f, -8.6f),
             };
-            c.Poly(shell, Robe, 9f, 2.5f, 0f, gHood, -0.32f, 0.12f);
-            // Cara delantera del capirote: otro plano más girado hacia la luz (se lee el volumen del cono).
+            c.Poly(shell, HoodCloth, 9f, 2.5f, 0f, gHood, -0.32f, 0.12f).WithBump(Patterns.Weave(2f, 0.3f), 0.25f);
+            // Cara delantera de la capucha: otro plano más girado hacia la luz (se lee el volumen).
             var front = new[]
             {
-                H(-3.4f - lag * 1.5f, 17.2f), H(-1.7f - lag * 0.6f, 13.6f), H(1.8f, 9f), H(5.2f, 6.6f), H(7.3f, 5.5f), H(6.5f, 3.8f),
-                H(6.7f, 0f), H(6.2f, -4.5f), H(4.6f, -7f), H(1.5f, -8.6f), H(-1.8f, -7.8f), H(-1.9f, 2f), H(-2.3f, 8.5f),
+                H(-5.8f - lag * 1.5f, 13.6f), H(-2.6f - lag * 0.6f, 11.6f), H(1.8f, 8.6f), H(5.2f, 6.6f), H(7.3f, 5.5f), H(6.5f, 3.8f),
+                H(6.7f, 0f), H(6.2f, -4.5f), H(4.6f, -7f), H(1.5f, -8.6f), H(-1.8f, -7.8f), H(-1.9f, 2f), H(-2.6f, 8.5f),
             };
-            c.Poly(front, Robe, 9.01f, 1.8f, 0f, gHood, 0.22f, 0.18f);
-            // Hueco de la capucha (sombra profunda) y la máscara dorada asomando.
-            c.Ellipse(H(2.8f, -0.8f), 4f, 5.6f, hr, HoodInner, 9.05f, 0f, gHood);
-            c.Ellipse(H(5f, -1f), 3.1f, 4.4f, hr - 6f, MaskGold, 9.1f, 0f, gMask);
-            // Labios de pez gruesos y salientes.
-            c.Capsule(H(6.9f, -3f), H(9.4f, -3.3f), 1.25f, 1.1f, MaskGold, 9.12f, 0f, gMask);
-            c.Capsule(H(6.6f, -4.9f), H(9f, -4.8f), 1.1f, 1f, MaskGold, 9.11f, -0.12f, gMask);
-            c.Capsule(H(7.4f, -4.1f), H(9.9f, -4.1f), 0.5f, 0.5f, MaskDark, 9.15f, 0f, gMask);
-            // Ojo saltón: aro de oro, cuenca oscura y una brasa dentro.
-            c.Ellipse(H(5.8f, 0.9f), 2.3f, 2.3f, 0f, MaskGold, 9.13f, 0.12f, gMask);
-            c.Ellipse(H(5.9f, 0.9f), 1.5f, 1.5f, 0f, MaskDark, 9.14f, 0f, gMask);
-            if (!fx.EyeOff) c.Ellipse(H(6.2f, 1f), fx.EyeBright ? 0.95f : 0.75f, fx.EyeBright ? 0.95f : 0.75f, 0f, fx.EyeBright ? EyeGlow : EyeDim, 9.16f, 0f, gMask);
-            // Branquias grabadas.
-            c.Capsule(H(2.7f, -3.6f), H(3f, -0.2f), 0.42f, 0.42f, MaskDark, 9.13f, 0f, gMask);
-            c.Capsule(H(3.7f, -4.2f), H(3.9f, -1.6f), 0.42f, 0.42f, MaskDark, 9.13f, 0f, gMask);
-            // Visera de la capucha sobre la máscara.
-            c.Poly(new[] { H(-0.2f, 6.1f), H(7.6f, 5.7f), H(7f, 3.6f), H(1.8f, 4f) }, Robe, 9.3f, 1.4f, 0f, gHood, 0.15f, 0.35f);
+            c.Poly(front, HoodCloth, 9.01f, 1.8f, 0f, gHood, 0.22f, 0.18f).WithBump(Patterns.Weave(2f, 0.3f), 0.25f);
+            // Costura y pliegues de la capucha.
+            c.Stitch(new[] { H(-5.4f - lag * 1.2f, 12.4f), H(-4.2f, 7f), H(-3.6f, 1f), H(-3.4f, -6f) }, gHood, 1, 1, -1, HoodCloth);
+            c.Fold(new[] { H(-7.6f, 4f), H(-5.6f, -1f), H(-5f, -6.6f) }, gHood, 2, 1, HoodCloth);
+            c.Fold(new[] { H(0.4f, 8.4f), H(-0.6f, 3f), H(-0.8f, -3f) }, gHood, 2, 1, HoodCloth);
+            // Hueco de la capucha: sombra total; solo se adivinan dos ascuas por ojos.
+            c.Ellipse(H(3.4f, -0.8f), 3.8f, 5.6f, hr, HoodInner, 9.05f, 0f, gHood);
+            c.Ellipse(H(5.4f, -2.4f), 2f, 3.6f, hr - 8f, HoodInner, 9.06f, 0f, gHood);
+            if (!fx.EyeOff)
+            {
+                var eyeMat = fx.EyeBright ? EyeGlow : EyeDim;
+                float er = fx.EyeBright ? 0.75f : 0.55f;
+                c.Ellipse(H(5.6f, 0.6f), er, er * 0.8f, 0f, eyeMat, 9.16f, 0f, gMask);
+                c.Ellipse(H(3.2f, 0.9f), er * 0.7f, er * 0.6f, 0f, EyeDim, 9.15f, 0f, gMask);
+            }
+            // Borde de la capucha: vuelta de tela gruesa con la arista iluminada y el forro oscuro por dentro.
+            var rim = new[] { H(7f, 5f), H(6.3f, 2.2f), H(6.5f, -1.2f), H(5.9f, -4.4f), H(4.4f, -6.6f) };
+            c.Ridge(rim, 1, gHood, HoodCloth);
+            c.Crease(new[] { H(6f, 4.4f), H(5.4f, 2f), H(5.6f, -1f), H(5f, -4f) }, 2, gHood, HoodCloth);
+            // Visera de la capucha sobre el hueco.
+            c.Poly(new[] { H(-0.2f, 6.1f), H(7.6f, 5.7f), H(7f, 3.6f), H(1.8f, 4f) }, HoodCloth, 9.3f, 1.4f, 0f, gHood, 0.15f, 0.35f);
         }
 
-        /// <summary>Báculo de madera de deriva con anillas y una garra de oro que sujeta la brasa.</summary>
+        /// <summary>Báculo de madera retorcida con anillas de hierro y una garra de hierro negro que encierra la brasa.</summary>
         void DrawStaff(ShadedCanvas c, Vector2 bottom, float angle, float z, int group, float orbSize, int orbState)
         {
             var ax = Dir(angle);
             var side = Dir(angle + 90f);
             Vector2 At(float along, float across) => Add(bottom, Add(Scale(ax, along), Scale(side, across)));
 
-            c.Capsule(At(0f, 0f), At(StaffLen, 0f), 1.15f, 1.2f, Wood, z, 0f, group);
+            // Madera retorcida: vetas en espiral y nudos.
+            c.Capsule(At(0f, 0f), At(StaffLen, 0f), 1.15f, 1.2f, Wood, z, 0f, group)
+             .WithDetail((u, v) => Mathf.Repeat(u + v * 1.8f, 5.5f) < 1.2f ? -1 : 0);
             c.Ellipse(At(StaffLen * 0.36f, 0.4f), 1.6f, 1.4f, angle, Wood, z + 0.01f, 0f, group);
             c.Ellipse(At(StaffLen * 0.62f, -0.4f), 1.5f, 1.4f, angle, Wood, z + 0.01f, 0f, group);
-            c.Capsule(At(0f, 0f), At(2.5f, 0f), 1.45f, 1.35f, Trim, z + 0.02f, 0f, group);
-            c.Capsule(At(StaffLen - 7f, 0f), At(StaffLen - 5.6f, 0f), 1.7f, 1.7f, Trim, z + 0.02f, 0f, group);
-            c.Capsule(At(StaffLen - 3.6f, 0f), At(StaffLen - 2.2f, 0f), 1.7f, 1.7f, Trim, z + 0.02f, 0f, group);
-            c.Ellipse(At(StaffLen, 0f), 2.4f, 1.6f, angle - 90f, Trim, z + 0.03f, 0f, group);
+            c.Dot(At(StaffLen * 0.36f, 0.6f), -1, group, Wood);
+            c.Dot(At(StaffLen * 0.62f, -0.2f), -1, group, Wood);
+            c.Capsule(At(0f, 0f), At(2.5f, 0f), 1.45f, 1.35f, Iron, z + 0.02f, 0f, group);
+            c.Capsule(At(StaffLen - 7f, 0f), At(StaffLen - 5.6f, 0f), 1.7f, 1.7f, Iron, z + 0.02f, 0f, group);
+            c.Capsule(At(StaffLen - 3.6f, 0f), At(StaffLen - 2.2f, 0f), 1.7f, 1.7f, Iron, z + 0.02f, 0f, group);
+            c.Ellipse(At(StaffLen, 0f), 2.4f, 1.6f, angle - 90f, Iron, z + 0.03f, 0f, group);
+            c.Glint(At(StaffLen - 6.3f, 0.8f), group, 0, Iron);
 
-            // Garra: dos púas que abrazan la brasa (una por detrás, otra por delante) y una espina central.
+            // Garra-jaula de hierro: dos púas que abrazan la brasa (una por detrás, otra por delante) y una espina central.
             float os = Mathf.Max(1f, orbSize);
             float spread = 4.6f + (os - 1f) * 2.6f, reach = 11.5f + (os - 1f) * 3f;
-            c.Strand(Bezier(At(StaffLen, -1f), At(StaffLen + 4f, -spread - 0.8f), At(StaffLen + reach, -2.2f), 6), 1f, 0.5f, Trim, z - 0.3f, 0f, group);
-            c.Strand(Bezier(At(StaffLen, 1f), At(StaffLen + 4f, spread + 0.8f), At(StaffLen + reach, 2.2f), 6), 1f, 0.5f, MaskGold, z + 0.3f, 0f, group);
-            c.Capsule(At(StaffLen, 0f), At(StaffLen + reach + 2f, 0f), 0.8f, 0.4f, Trim, z - 0.35f, 0f, group);
+            c.Strand(Bezier(At(StaffLen, -1f), At(StaffLen + 4f, -spread - 0.8f), At(StaffLen + reach, -2.2f), 6), 1f, 0.5f, Iron, z - 0.3f, 0f, group);
+            c.Strand(Bezier(At(StaffLen, 1f), At(StaffLen + 4f, spread + 0.8f), At(StaffLen + reach, 2.2f), 6), 1f, 0.5f, Iron, z + 0.3f, 0f, group);
+            c.Capsule(At(StaffLen, 0f), At(StaffLen + reach + 2f, 0f), 0.8f, 0.4f, Iron, z - 0.35f, 0f, group);
+
+            // Amuletos de hueso colgando de un cordel bajo la garra (siempre hacia abajo).
+            for (int i = 0; i < 2; i++)
+            {
+                var a = At(StaffLen - 1.5f, i == 0 ? 1.6f : -1.6f);
+                var end = Add(a, V(i == 0 ? 0.8f : -0.6f, -(i == 0 ? 6f : 4.2f)));
+                if (end.y < 0.8f) end.y = 0.8f;
+                int gc = c.NewGroup();
+                float zc = i == 0 ? z + 0.4f : z - 0.4f;
+                c.Capsule(a, end, 0.35f, 0.35f, Leather, zc, i == 0 ? 0f : -0.1f, gc);
+                c.Capsule(end, Add(end, V(0f, -2.4f)), 0.75f, 0.35f, Bone, zc + 0.01f, i == 0 ? 0f : -0.1f, gc);
+            }
 
             var o = At(StaffLen + 6.5f, 0f);
             if (orbState == 2)
@@ -676,6 +783,27 @@ namespace Abismo.EditorTools
                 float ny = Flare;
                 if (bottom < 1.6f) ny -= (1f - bottom / 1.6f) * 0.45f;
                 return new N3(nx * Px - ny * Ax, nx * Py - ny * Ay, nz).Normalized();
+            }
+
+            /// <summary>Líneas de pliegue (en los valles de la onda de la tela) desde t0 hasta el bajo.</summary>
+            public List<Vector2[]> Valleys(float t0)
+            {
+                var list = new List<Vector2[]>();
+                for (int k = -4; k <= 4; k++)
+                {
+                    float uc = (Mathf.PI * (2 * k + 1) - FoldPhase) / (Folds * Mathf.PI);
+                    if (uc < -0.85f || uc > 0.85f) continue;
+                    float u = (uc + 1f) * 0.5f;
+                    var pts = new Vector2[5];
+                    for (int i = 0; i < 5; i++)
+                    {
+                        float t = Mathf.Lerp(t0 + 0.08f * PixelCanvas.Hash(k + 5, Seed, 3), 0.97f, i / 4f);
+                        float front = FrontAt(t), back = -BackAt(t);
+                        pts[i] = Point(t, back + (front - back) * u);
+                    }
+                    list.Add(pts);
+                }
+                return list;
             }
 
             public System.Func<float, float, (bool, N3)> Body() => (px, py) =>
