@@ -23,14 +23,34 @@ namespace Abismo.EditorTools
         // Materiales
         // ------------------------------------------------------------------
 
-        static readonly PixelMaterial Brass = new PixelMaterial(Ramp.Make("b08a3e", 5, 0.12f, 0.3f, 1.5f)) { Gloss = 0.6f, Ambient = 0.26f, Rim = 0.5f };
-        static readonly PixelMaterial BrassDark = new PixelMaterial(Ramp.Make("7a5a26", 4, 0.1f)) { Gloss = 0.3f };
-        static readonly PixelMaterial Coat = new PixelMaterial(Ramp.Make("2f4043", 5, 0.1f, 0.35f, 1.5f)) { Ambient = 0.24f, Rim = 0.55f, Texture = ClothNoise };
-        static readonly PixelMaterial Lining = new PixelMaterial(Ramp.Make("6a2232", 4, 0.1f, 0.35f, 1.4f)) { Ambient = 0.22f, Rim = 0.6f };
+        static readonly PixelMaterial Brass = new PixelMaterial(Ramp.Make("b08a3e", 5, 0.12f, 0.3f, 1.5f))
+        {
+            Gloss = 0.6f, Ambient = 0.26f, Rim = 0.5f, SpecularAt = 0.9f, Specular = PixelCanvas.Hex("fff4c8"),
+        };
+        static readonly PixelMaterial BrassDark = new PixelMaterial(Ramp.Make("7a5a26", 4, 0.1f)) { Gloss = 0.3f, Specular = PixelCanvas.Hex("ffe9a8") };
+        /// <summary>Cristal apagado del ojo de buey trasero (no brilla: solo refleja).</summary>
+        static readonly PixelMaterial DeadGlass = new PixelMaterial(Ramp.Make("1f4a44", 4, 0.1f, 0.35f, 1.6f)) { Gloss = 0.8f, Ambient = 0.2f, Specular = PixelCanvas.Hex("d8fff2") };
+        static readonly PixelMaterial GlassGlint = PixelMaterial.Glow("f0fffa");
+        static readonly Color32 Verdigris = PixelCanvas.Hex("4f9a7c");
+        // Abrigo de lona encerada: el tejido es un relieve pegado a cada pieza (no al lienzo), así no "nada" al moverse.
+        static readonly PixelMaterial Coat = new PixelMaterial(Ramp.Make("2f4043", 5, 0.1f, 0.35f, 1.5f))
+        {
+            Ambient = 0.24f, Rim = 0.55f, Bump = Patterns.Weave(3f, 0.6f), BumpStrength = 0.45f,
+        };
+        static readonly PixelMaterial Lining = new PixelMaterial(Ramp.Make("6a2232", 4, 0.1f, 0.35f, 1.4f)) { Ambient = 0.22f, Rim = 0.6f, Dither = 0f, BandDither = 0.2f };
+        static readonly PixelMaterial CapeOuter = new PixelMaterial(Ramp.Make("2a2b33", 4, 0.1f, 0.4f, 1.5f)) { Ambient = 0.24f, Rim = 0.6f, Dither = 0f };
         static readonly PixelMaterial Trousers = new PixelMaterial(Ramp.Make("262c36", 4, 0.08f)) { Ambient = 0.22f };
         static readonly PixelMaterial Leather = new PixelMaterial(Ramp.Make("5c3b25", 4, 0.1f)) { Ambient = 0.25f, Gloss = 0.15f };
         static readonly PixelMaterial Rope = new PixelMaterial(Ramp.Make("8a7448", 4, 0.08f)) { Ambient = 0.3f };
-        static readonly PixelMaterial Iron = new PixelMaterial(Ramp.Make("6f7b82", 5, 0.08f, 0.32f, 1.38f)) { Gloss = 0.45f, Ambient = 0.3f, Rim = 0.45f, Dither = 0f, Texture = RustNoise };
+        static readonly PixelMaterial Strap = new PixelMaterial(Ramp.Make("553a25", 4, 0.1f, 0.32f, 1.5f)) { Ambient = 0.25f, Gloss = 0.12f, Rim = 0.5f };
+        static readonly PixelMaterial BootLeather = new PixelMaterial(Ramp.Make("4a3222", 4, 0.1f, 0.32f, 1.5f)) { Ambient = 0.24f, Gloss = 0.18f, Rim = 0.5f };
+        // Hoja del Garfio: el óxido va pegado a la hoja (Detail en coordenadas locales), no al lienzo, para que no "nade" al moverla.
+        static readonly PixelMaterial Iron = new PixelMaterial(Ramp.Make("6f7b82", 5, 0.08f, 0.32f, 1.38f))
+        {
+            Gloss = 0.45f, Ambient = 0.3f, Rim = 0.45f, Dither = 0f, Specular = PixelCanvas.Hex("f2fffb"),
+            Detail = (u, v) => PixelCanvas.ValueNoise(u / 3f, v / 2f, 0, 77) > 0.74f ? -1 : 0,
+        };
+        static readonly PixelMaterial IronDark = new PixelMaterial(Ramp.Make("4a535c", 4, 0.08f)) { Gloss = 0.3f, Ambient = 0.28f };
         static readonly PixelMaterial Hose = new PixelMaterial(Ramp.Make("3d3326", 4, 0.06f)) { Ambient = 0.25f };
         static readonly PixelMaterial GlassRing = PixelMaterial.Glow("1d6b5a");
         static readonly PixelMaterial GlassMid = PixelMaterial.Glow("3fd6a4");
@@ -41,8 +61,6 @@ namespace Abismo.EditorTools
         static readonly PixelMaterial Laudanum = PixelMaterial.Glow("ff9b4a");
         static readonly PixelMaterial Sign = PixelMaterial.Glow("8affd8");
 
-        static float ClothNoise(int x, int y) => (PixelCanvas.Hash(x / 2, y / 3, 41) - 0.5f) * 0.08f;
-        static float RustNoise(int x, int y) => PixelCanvas.ValueNoise(x / 3f, y / 3f, 0, 77) > 0.72f ? -0.22f : 0f;
 
         // ------------------------------------------------------------------
         // Poses base
@@ -433,13 +451,47 @@ namespace Abismo.EditorTools
             capePoints.AddRange(Bezier(capeTop, capeMid, capeBottom, 6));
             capePoints.AddRange(Tatters(capeBottom, Add(hip, V(2f - sway * 4f, -12f + capeLift * 8f)), 5, 3f, 17));
             capePoints.Add(Add(chest, V(2f, 0f)));
+            // Exterior de lana oscura asomando por detrás del forro carmesí (dos capas).
+            var outer = new Vector2[capePoints.Count];
+            for (int k = 0; k < outer.Length; k++) outer[k] = Add(capePoints[k], V(-1.3f, 0.5f));
+            c.Poly(outer, CapeOuter, -0.1f, 2f, -0.08f, gCape, -0.35f, 0f);
             c.Poly(capePoints.ToArray(), Lining, 0f, 2.5f, -0.05f, gCape, -0.35f, 0f);
+            // Pliegues que caen del hombro, agujeros y hebras sueltas en el borde raído.
+            var hemEnd = Add(hip, V(2f - sway * 4f, -12f + capeLift * 8f));
+            for (int k = 1; k <= 3; k++)
+            {
+                float t = k / 4f;
+                var top = Mix(capeTop, Add(chest, V(2f, 0f)), t * 0.7f);
+                var bottom = Add(Mix(capeBottom, hemEnd, t), V(0f, 2.2f));
+                var mid = Add(Mix(top, bottom, 0.5f), V(-1.2f - sway * 1.5f, 0f));
+                c.Fold(Bezier(top, mid, bottom, 4), gCape, 2, 1, Lining);
+            }
+            c.Dot(Add(Mix(capeBottom, hemEnd, 0.3f), V(0.4f, 3.4f)), -3, gCape, Lining);
+            c.Dot(Add(Mix(capeBottom, hemEnd, 0.62f), V(0f, 4.2f)), -3, gCape, Lining);
+            foreach (float t in new[] { 0.15f, 0.55f, 0.85f })
+            {
+                var tip = Mix(capeBottom, hemEnd, t);
+                c.Capsule(Add(tip, V(0f, -1.6f)), Add(tip, V(-0.8f - sway, -4f)), 0.45f, 0.4f, Lining, -0.05f, -0.1f, gCape);
+            }
 
             // --- Manguera de la escafandra (detrás del cuerpo) ---
             var hoseStart = Add(helmet, Rotate(V(-8f, -1f), V(0f, 0f), -lean));
             var hoseEnd = Add(hip, V(-6f, 3f));
             var hoseCtrl = Add(Mix(hoseStart, hoseEnd, 0.5f), V(-9f - p["hose"] * 5f, p["hose"] * 2f));
-            c.Strand(Bezier(hoseStart, hoseCtrl, hoseEnd, 7), 2.1f, 1.7f, Hose, 0.5f, 0f, c.NewGroup());
+            int gHose = c.NewGroup();
+            var hosePts = Bezier(hoseStart, hoseCtrl, hoseEnd, 7);
+            c.Strand(hosePts, 2.1f, 1.7f, Hose, 0.5f, 0f, gHose);
+            // Anillas de refuerzo de la manguera (aros oscuros con su canto claro) y abrazadera de latón en la cadera.
+            for (int k = 1; k < hosePts.Length - 1; k++)
+            {
+                var d = Sub(hosePts[k + 1], hosePts[k - 1]);
+                float l = Mathf.Max(0.001f, Mathf.Sqrt(d.x * d.x + d.y * d.y));
+                var n = V(-d.y / l, d.x / l);
+                c.Crease(new[] { Add(hosePts[k], Scale(n, -2.2f)), Add(hosePts[k], Scale(n, 2.2f)) }, 2, gHose, Hose);
+                var lit = Add(hosePts[k], Scale(d, 0.9f / l));
+                c.Ridge(new[] { Add(lit, Scale(n, -1.6f)), Add(lit, Scale(n, 1.6f)) }, 1, gHose, Hose);
+            }
+            c.Ellipse(hoseEnd, 2.3f, 2.3f, 0f, BrassDark, 0.55f, 0f, c.NewGroup());
 
             // --- Brazo y pierna traseros (más oscuros: están lejos de la luz) ---
             DrawLeg(c, hip, kneeB, ankleB, 1f, -0.14f, gLegB);
@@ -463,28 +515,13 @@ namespace Abismo.EditorTools
             coatPoints.Add(Add(waist, Dir(torsoAngle + 90f, 7.2f)));
             coatPoints.Add(Add(chest, Dir(torsoAngle + 90f, 7f)));
             c.Poly(coatPoints.ToArray(), Coat, 4.5f, 2.5f, 0f, gTorso, 0.15f, 0f);
-            // Cinturón con cuerdas
-            c.Capsule(Add(waist, Dir(torsoAngle + 90f, 6.5f)), Add(waist, Dir(torsoAngle - 90f, 6.5f)), 1.6f, 1.6f, Leather, 4.8f, 0f, gTorso);
-            c.Capsule(Add(waist, V(-2f, -2f)), Add(waist, V(3f, -6f)), 0.9f, 0.9f, Rope, 4.9f, 0f, gTorso);
+            DrawTorsoDetail(c, hip, chest, neck, waist, torsoAngle, hemF, hemB, gTorso);
 
             // --- Pierna delantera ---
             DrawLeg(c, hip, kneeF, ankleF, 6f, 0f, gLegF);
 
             // --- Escafandra ---
-            c.Ellipse(Add(neck, V(0.5f, 1.5f)), 8.5f, 3.6f, -lean * 0.5f, BrassDark, 7f, 0f, gHelmet);
-            c.Ellipse(helmet, 9.4f, 10f, -lean * 0.3f, Brass, 8f, 0f, gHelmet);
-            var valve = Add(helmet, Rotate(V(-1f, 10f), V(0f, 0f), -lean * 0.8f - p["head"]));
-            c.Capsule(valve, Add(valve, Rotate(V(0f, 3f), V(0f, 0f), -lean)), 1.8f, 1.6f, BrassDark, 8.1f, 0f, gHelmet);
-            var port = Add(helmet, Rotate(V(4.6f, 0.3f), V(0f, 0f), -lean * 0.8f - p["head"]));
-            c.Ellipse(port, 5.2f, 5.6f, 0f, BrassDark, 8.2f, 0f, gHelmet);
-            c.Ellipse(port, 3.8f, 4.2f, 0f, GlassRing, 8.3f, 0f, gHelmet);
-            c.Ellipse(Add(port, V(0.4f, 0.2f)), 2.6f, 3f, 0f, GlassMid, 8.4f, 0f, gHelmet);
-            c.Ellipse(Add(port, V(0.9f, 0.9f)), 1.1f, 1.3f, 0f, GlassCore, 8.5f, 0f, gHelmet);
-            foreach (var bolt in new[] { V(-5f, 5f), V(-6f, -3f), V(1f, -7.5f) })
-            {
-                var b = Add(helmet, Rotate(bolt, V(0f, 0f), -lean * 0.8f - p["head"]));
-                c.Ellipse(b, 1.1f, 1.1f, 0f, BrassDark, 8.15f, 0f, gHelmet);
-            }
+            DrawHelmet(c, p, neck, helmet, lean, gHelmet, out var port);
 
             // --- Brazo delantero y el Garfio ---
             if (smear.On && smear.AtHand)
@@ -503,43 +540,239 @@ namespace Abismo.EditorTools
             return c;
         }
 
+        /// <summary>
+        /// Escafandra de latón: peto remachado con tuercas de mariposa, casco martilleado con costura remachada y
+        /// verdín, ojo de buey frontal (aro con pernos, rejilla y cristal encendido con reflejo), ojo de buey trasero
+        /// apagado, válvula con volante y racor de la manguera.
+        /// </summary>
+        void DrawHelmet(ShadedCanvas c, Pose p, Vector2 neck, Vector2 helmet, float lean, int g, out Vector2 port)
+        {
+            float hr = -lean * 0.8f - p["head"];
+            Vector2 H(float x, float y) => Add(helmet, Rotate(V(x, y), V(0f, 0f), hr));
+
+            // Peto (corselete) remachado y dos tuercas de mariposa que lo sujetan al casco.
+            var collar = Add(neck, V(0.5f, 1.5f));
+            c.Ellipse(collar, 8.5f, 3.6f, -lean * 0.5f, BrassDark, 7f, 0f, g).WithBump(Patterns.Rivets(3f, 0.9f, -0.8f, 0.5f), 1.6f);
+            var collarAxis = Dir(-lean * 0.5f);
+            int gn = c.NewGroup();
+            foreach (float k in new[] { -7.4f, 7f })
+            {
+                var nut = Add(collar, Add(Scale(collarAxis, k), V(0f, 1.4f)));
+                c.Capsule(Add(nut, V(-1.3f, 0.9f)), Add(nut, V(1.3f, 0.9f)), 0.6f, 0.6f, Brass, 7.06f, 0f, gn);
+                c.Ellipse(nut, 1.1f, 1.2f, 0f, BrassDark, 7.07f, 0f, gn);
+            }
+
+            // Casco: latón pulido con un poco de verdín en el borde inferior (años bajo el agua).
+            c.Ellipse(helmet, 9.4f, 10f, -lean * 0.3f, Brass, 8f, 0f, g)
+             .Soft()
+             .WithTint(Verdigris, 0.45f, (u, v) => v < -4.5f && v > -6.5f && PixelCanvas.ValueNoise(u / 1.6f, v / 1.4f, 0, 31) > 0.7f ? 1f : 0f);
+            // Aro del cuello: banda oscura atornillada donde el casco se une al peto.
+            int gr = c.NewGroup();
+            var ring = H(-0.4f, -7.9f);
+            c.Ellipse(ring, 8.6f, 2.1f, hr, BrassDark, 8.05f, 0f, gr)
+             .WithTint(Verdigris, 0.5f, (u, v) => PixelCanvas.ValueNoise(u / 1.5f, v, 0, 37) > 0.7f ? 1f : 0f);
+            for (int k = 0; k < 4; k++)
+                c.Dot(H(-6.2f + k * 3.9f, -7.6f - Mathf.Abs(k - 1.6f) * 0.25f), 2, gr, BrassDark);
+            // Brillo especular del latón (arriba-delante) con su halo de 1 px.
+            c.Glint(H(2.2f, 6.6f), g, 0, Brass);
+            c.Dot(H(1.2f, 6.6f), 1, g, Brass);
+            c.Dot(H(2.2f, 5.6f), 1, g, Brass);
+
+            // Rejilla lateral de ventilación (placa oscura con dos ranuras), detrás de la oreja.
+            var grille = H(-5.8f, 1.8f);
+            int gb = c.NewGroup();
+            c.Ellipse(grille, 2.4f, 2f, 90f + hr, BrassDark, 8.12f, 0f, gb).WithDetail(Patterns.Stripes(1.6f, 0.8f, -1, 0.6f));
+
+            // Válvula de escape con volante.
+            var valve = Add(helmet, Rotate(V(-1f, 10f), V(0f, 0f), hr));
+            var valveTop = Add(valve, Rotate(V(0f, 3f), V(0f, 0f), -lean));
+            c.Capsule(valve, valveTop, 1.8f, 1.4f, BrassDark, 8.1f, 0f, g);
+            c.Capsule(Add(valveTop, Rotate(V(-2.2f, 0.3f), V(0f, 0f), -lean)), Add(valveTop, Rotate(V(2.2f, 0.3f), V(0f, 0f), -lean)), 0.55f, 0.55f, Brass, 8.11f, 0f, g);
+
+            // Racor de la manguera (tuerca estriada) en la nuca.
+            var nozzle = H(-8.2f, -1.5f);
+            c.Ellipse(nozzle, 2f, 2.4f, hr, BrassDark, 8.14f, 0f, c.NewGroup()).WithBump(Patterns.Ridges(1.6f, 0.6f), 1.2f);
+
+            // Ojo de buey frontal: aro oscuro con cuatro pernos, cristal encendido y reflejo.
+            port = H(4.6f, 0.3f);
+            int gp = c.NewGroup();
+            c.Ellipse(port, 5.2f, 5.6f, 0f, BrassDark, 8.2f, 0f, gp);
+            for (int k = 0; k < 4; k++)
+            {
+                var bolt = Add(port, Dir(45f + k * 90f + hr, 4.7f));
+                c.Dot(bolt, 2, gp, BrassDark);
+            }
+            c.Ellipse(port, 3.8f, 4.2f, 0f, GlassRing, 8.3f, 0f, gp);
+            c.Ellipse(Add(port, V(0.4f, 0.2f)), 2.6f, 3f, 0f, GlassMid, 8.4f, 0f, gp);
+            c.Ellipse(Add(port, V(0.9f, 0.9f)), 1.1f, 1.3f, 0f, GlassCore, 8.5f, 0f, gp);
+            c.Capsule(Add(port, V(-0.6f, 1.6f)), Add(port, V(0.3f, 2.7f)), 0.45f, 0.45f, GlassGlint, 8.6f);
+        }
+
+        /// <summary>
+        /// Detalle del abrigo y el equipo: pliegues de la falda, tapeta con botones, pespunte del bajo, bandolera
+        /// cosida con hebilla, cinturón con hebilla, bolsas de cuero con solapa y un rollo de cuerda a la espalda.
+        /// </summary>
+        void DrawTorsoDetail(ShadedCanvas c, Vector2 hip, Vector2 chest, Vector2 neck, Vector2 waist, float torsoAngle,
+                             Vector2 hemF, Vector2 hemB, int gTorso)
+        {
+            // T(a, d): a px a lo largo de la espalda desde la cadera, d px hacia delante (negativo = hacia atrás).
+            Vector2 T(float a, float d) => Add(hip, Add(Dir(torsoAngle, a), Dir(torsoAngle - 90f, d)));
+
+            // Cuello alto del abrigo bajo el peto.
+            c.Ellipse(Add(neck, Dir(torsoAngle, -1.5f)), 5.4f, 2.8f, torsoAngle - 90f, Coat, 6.5f, 0f, gTorso);
+            // Pliegues de la falda del abrigo (surco + cresta) y pespunte del bajo.
+            for (int k = 1; k <= 3; k++)
+            {
+                float t = k / 4f;
+                var top = Mix(T(2.5f, 5f), T(2.5f, -6f), t);
+                var bottom = Add(Mix(hemF, hemB, t), V(0f, 1.2f));
+                c.Fold(new[] { top, Mix(top, bottom, 0.55f), bottom }, gTorso, 2, 1, Coat);
+            }
+            c.Stitch(new[] { Add(hemF, V(-0.5f, 1.8f)), Add(hemB, V(0.5f, 1.8f)) }, gTorso, 1, 2, 1, Coat);
+            // Tapeta delantera con dos botones de latón.
+            c.Crease(new[] { T(16f, 4.4f), T(5f, 4.8f) }, 1, gTorso, Coat);
+            c.Ellipse(T(12.6f, 3.9f), 0.75f, 0.75f, 0f, Brass, 4.95f, 0f, gTorso);
+            c.Ellipse(T(9f, 4.1f), 0.75f, 0.75f, 0f, Brass, 4.95f, 0f, gTorso);
+            // Pliegue bajo el pecho, donde el abrigo se recoge en el cinturón.
+            c.Fold(new[] { T(7.5f, -5f), T(6.2f, -1f), T(6.8f, 3f) }, gTorso, 1, 1, Coat);
+
+            // Bandolera cosida del hombro trasero a la cadera delantera, con hebilla.
+            int gStrap = c.NewGroup();
+            var s0 = T(16.5f, -5.5f);
+            var s1 = T(2f, 6.2f);
+            c.Capsule(s0, s1, 1.15f, 1.15f, Strap, 4.85f, 0f, gStrap);
+            c.Stitch(new[] { s0, s1 }, gStrap, 1, 2, 1, Strap);
+            var sb = Mix(s0, s1, 0.42f);
+            c.Ellipse(sb, 1.7f, 1.5f, torsoAngle, Brass, 4.87f, 0f, gStrap);
+            c.Dot(sb, -2, gStrap, Brass);
+
+            // Cinturón con pespunte y hebilla delantera.
+            int gBelt = c.NewGroup();
+            var b0 = Add(waist, Dir(torsoAngle + 90f, 6.5f));
+            var b1 = Add(waist, Dir(torsoAngle - 90f, 6.5f));
+            c.Capsule(b0, b1, 1.6f, 1.6f, Leather, 4.9f, 0f, gBelt);
+            c.Stitch(new[] { Add(b0, Dir(torsoAngle, 0.6f)), Add(b1, Dir(torsoAngle, 0.6f)) }, gBelt, 1, 2, 1, Leather);
+            var buckle = T(4f, 4.6f);
+            c.Poly(new[] { Add(buckle, Add(Dir(torsoAngle, 1.9f), Dir(torsoAngle - 90f, -1.4f))), Add(buckle, Add(Dir(torsoAngle, 1.9f), Dir(torsoAngle - 90f, 1.4f))),
+                           Add(buckle, Add(Dir(torsoAngle, -1.9f), Dir(torsoAngle - 90f, 1.4f))), Add(buckle, Add(Dir(torsoAngle, -1.9f), Dir(torsoAngle - 90f, -1.4f))) },
+                   Brass, 4.95f, 0.8f, 0f, gBelt);
+            c.Dot(buckle, -2, gBelt, Brass);
+
+            // Bolsa delantera colgando del cinturón (solapa con botón).
+            int gPouch = c.NewGroup();
+            c.Poly(new[] { T(3.2f, 1.2f), T(3.2f, 5.0f), T(-2.6f, 4.8f), T(-3f, 1.4f) }, Leather, 4.88f, 1.2f, 0f, gPouch);
+            c.Crease(new[] { T(0.6f, 1.4f), T(0.4f, 4.8f) }, 2, gPouch, Leather);
+            c.Ellipse(T(0.9f, 3.1f), 0.7f, 0.7f, 0f, Brass, 4.89f, 0f, gPouch);
+            // Bolsa trasera y cabo de cuerda colgando a la espalda.
+            int gBack = c.NewGroup();
+            c.Poly(new[] { T(3f, -3.4f), T(3f, -7.6f), T(-3.6f, -7.8f), T(-3.2f, -3.2f) }, Strap, 4.7f, 1.4f, 0f, gBack);
+            c.Crease(new[] { T(0.4f, -3.4f), T(0.6f, -7.6f) }, 1, gBack, Strap);
+            c.Capsule(Add(waist, V(-2f, -2f)), Add(waist, V(3f, -6f)), 0.9f, 0.9f, Rope, 4.91f, 0f, c.NewGroup())
+             .WithBump(Patterns.Ridges(1.5f, 0.6f), 1.2f);
+        }
+
         void DrawLeg(ShadedCanvas c, Vector2 hip, Vector2 knee, Vector2 ankle, float z, float shade, int group)
         {
             c.Capsule(hip, knee, 3.8f, 3.1f, Trousers, z, shade, group);
-            c.Capsule(knee, Add(ankle, V(0f, 2f)), 3.2f, 2.8f, Leather, z + 0.1f, shade, group);
-            // Bota apuntando hacia delante
+            // Pliegue del pantalón y correa del muslo.
+            var down = Sub(knee, hip);
+            float dl = Mathf.Max(0.001f, Mathf.Sqrt(down.x * down.x + down.y * down.y));
+            var front = V(-down.y / dl, down.x / dl);
+            if (front.x < 0f) front = Scale(front, -1f);
+            c.Fold(new[] { Add(Mix(hip, knee, 0.25f), Scale(front, 1.2f)), Add(Mix(hip, knee, 0.8f), Scale(front, 1.8f)) }, group, 2, 1, Trousers);
+            int gBand = c.NewGroup();
+            var band = Mix(hip, knee, 0.5f);
+            c.Capsule(Add(band, Scale(front, -3.5f)), Add(band, Scale(front, 3.5f)), 0.85f, 0.85f, Strap, z + 0.03f, shade, gBand);
+            // Caña de la bota con vuelta, cordones y rodillera.
+            var shinEnd = Add(ankle, V(0f, 2f));
+            c.Capsule(knee, shinEnd, 3.2f, 2.8f, BootLeather, z + 0.1f, shade, group);
+            var sd = Sub(shinEnd, knee);
+            float sl = Mathf.Max(0.001f, Mathf.Sqrt(sd.x * sd.x + sd.y * sd.y));
+            var sf = V(-sd.y / sl, sd.x / sl);
+            if (sf.x < 0f) sf = Scale(sf, -1f);
+            int gCuff = c.NewGroup();
+            var cuff = Mix(knee, shinEnd, 0.2f);
+            c.Capsule(Add(cuff, Scale(sf, -3.3f)), Add(cuff, Scale(sf, 3.3f)), 1.2f, 1.2f, BootLeather, z + 0.12f, shade, gCuff);
+            // Cordones: cruces claras alternas con huecos oscuros.
+            var l0 = Add(Mix(knee, shinEnd, 0.36f), Scale(sf, 1.6f));
+            var l1 = Add(Mix(knee, shinEnd, 0.95f), Scale(sf, 1.4f));
+            c.Mark(new[] { l0, l1 }, 1, group, BootLeather, 1, 1);
+            c.Mark(new[] { Add(l0, Scale(sf, -1f)), Add(l1, Scale(sf, -1f)) }, -1, group, BootLeather, 1, 1);
+            // Bota de buzo: empeine de cuero, puntera de latón y suela de plomo.
             var toe = Add(ankle, V(6.5f, -1.6f));
             c.Poly(new[] { Add(ankle, V(-3f, 2.5f)), Add(ankle, V(2.5f, 2.5f)), Add(toe, V(0f, 1.2f)), Add(toe, V(0.5f, -1f)), Add(ankle, V(-3.2f, -2.5f)) },
-                   Leather, z + 0.2f, 1.5f, shade, group);
+                   BootLeather, z + 0.2f, 1.5f, shade, group);
+            int gSole = c.NewGroup();
+            c.Poly(new[] { Add(ankle, V(-3.6f, -1.1f)), Add(ankle, V(7.4f, -1.3f)), Add(ankle, V(7.6f, -2.5f)), Add(ankle, V(-3.7f, -2.5f)) },
+                   IronDark, z + 0.25f, 0.8f, shade, gSole);
+            c.Ellipse(Add(toe, V(-0.4f, 0.2f)), 1.9f, 1.5f, 0f, Brass, z + 0.24f, shade, gSole);
         }
 
         void DrawArm(ShadedCanvas c, Vector2 shoulder, Vector2 elbow, Vector2 hand, float z, float shade, int group)
         {
             c.Capsule(shoulder, elbow, 3.3f, 2.7f, Coat, z, shade, group);
             c.Capsule(elbow, hand, 2.7f, 2.3f, Coat, z + 0.05f, shade, group);
+            // Pliegue de la manga en el codo.
+            var e0 = Mix(shoulder, elbow, 0.8f);
+            var across = Rotate(Sub(elbow, shoulder), V(0f, 0f), 90f);
+            float al = Mathf.Max(0.001f, Mathf.Sqrt(across.x * across.x + across.y * across.y));
+            across = Scale(across, 1f / al);
+            c.Fold(new[] { Add(e0, Scale(across, -2.2f)), Add(Mix(shoulder, elbow, 0.92f), Scale(across, 1.6f)) }, group, 2, 1, Coat);
+            // Costura de la sisa (pespunte claro donde la manga se une al hombro).
+            c.Stitch(new[] { Add(Mix(shoulder, elbow, 0.3f), Scale(across, -2.8f)), Add(Mix(shoulder, elbow, 0.36f), Scale(across, 2.8f)) }, group, 1, 1, 1, Coat);
+            // Brazal de cuero con dos correas.
+            int gBr = c.NewGroup();
+            c.Capsule(Mix(elbow, hand, 0.28f), Mix(elbow, hand, 0.82f), 2.75f, 2.45f, Strap, z + 0.07f, shade, gBr)
+             .WithDetail(Patterns.Stripes(2.6f, 0.9f, -2, 0.8f));
+            // Guante.
             c.Ellipse(hand, 2.6f, 2.4f, 0f, Leather, z + 0.1f, shade, group);
+            c.Dot(Add(hand, V(0.6f, 1f)), 1, group, Leather);
         }
 
-        /// <summary>El Garfio: empuñadura, guarda de latón y una hoja larga rematada en una uña de ancla.</summary>
+        /// <summary>
+        /// El Garfio de Devil Reef: una hoja de pesca convertida en arma. Pomo con el ojo de un anzuelo (anilla hueca),
+        /// empuñadura envuelta en tiras de cuero con virolas, guarda de latón en cola de pez con botón central,
+        /// hoja con filo brillante, acanaladura y óxido, y una uña curva con lengüeta (el anzuelo) hacia atrás.
+        /// La punta sigue en (46, 0) a lo largo de la hoja (la ejecución depende de ello).
+        /// </summary>
         void DrawSword(ShadedCanvas c, Vector2 hand, float angle, float z, int group)
         {
             var axis = Dir(angle);
             var side = Dir(angle + 90f);
             Vector2 At(float along, float across) => Add(hand, Add(Scale(axis, along), Scale(side, across)));
 
-            c.Capsule(At(-5f, 0f), At(3f, 0f), 1.5f, 1.5f, Leather, z, 0f, group);
-            c.Ellipse(At(-5.5f, 0f), 1.9f, 1.9f, 0f, BrassDark, z + 0.05f, 0f, group);
-            c.Poly(new[] { At(3f, -5f), At(5.5f, -5f), At(5.5f, 5f), At(3f, 5f) }, Brass, z + 0.1f, 1.2f, 0f, group);
+            // Pomo: ojo del anzuelo (anilla con hueco de verdad).
+            var eye = At(-7.2f, 0f);
+            var ringPts = new List<Vector2>();
+            for (int k = 0; k <= 10; k++) ringPts.Add(Add(eye, Dir(angle + k * 36f, 1.7f)));
+            c.Strand(ringPts, 0.75f, 0.75f, IronDark, z + 0.04f, 0f, group);
+            // Empuñadura envuelta en diagonal, con virolas de latón en los extremos.
+            c.Capsule(At(-5f, 0f), At(3f, 0f), 1.5f, 1.5f, Leather, z, 0f, group)
+             .WithDetail((u, v) => Mathf.Repeat(u + v * 0.9f, 2.2f) < 0.9f ? -1 : 0);
+            c.Capsule(At(-5.4f, 0f), At(-4.4f, 0f), 1.75f, 1.75f, BrassDark, z + 0.05f, 0f, group);
+            c.Capsule(At(2.2f, 0f), At(3.2f, 0f), 1.75f, 1.75f, BrassDark, z + 0.05f, 0f, group);
+            // Guarda en cola de pez: barra curva con remates en bola y botón central.
+            int gGuard = c.NewGroup();
+            c.Strand(new[] { At(6.4f, -5.6f), At(4.6f, -3.6f), At(4.1f, 0f), At(4.6f, 3.6f), At(6.4f, 5.6f) }, 1.15f, 1.15f, Brass, z + 0.1f, 0f, gGuard);
+            c.Ellipse(At(6.6f, -5.9f), 1.25f, 1.25f, 0f, Brass, z + 0.11f, 0f, gGuard);
+            c.Ellipse(At(6.6f, 5.9f), 1.25f, 1.25f, 0f, Brass, z + 0.11f, 0f, gGuard);
+            c.Ellipse(At(4.6f, 0f), 1.7f, 1.7f, 0f, BrassDark, z + 0.12f, 0f, gGuard);
+            c.Glint(At(4.9f, 0.6f), gGuard, 0, BrassDark);
             // Hoja: ancha, con lomo recto y filo curvado, termina en punta.
             c.Poly(new[]
             {
                 At(5.5f, -2.6f), At(20f, -3.3f), At(34f, -3.6f), At(41f, -2.4f), At(46f, 0.6f),
                 At(40f, 2.6f), At(30f, 3f), At(5.5f, 2.6f),
-            }, Iron, z + 0.05f, 1.6f, 0f, group);
-            // Uña de ancla hacia atrás desde el lomo.
-            c.Poly(new[] { At(31f, 2.6f), At(27f, 7.5f), At(24f, 9.5f), At(29.5f, 9f), At(36f, 2.8f) }, Iron, z + 0.06f, 1.2f, -0.05f, group);
-            // Acanaladura central más oscura.
-            c.Capsule(At(8f, 0f), At(30f, 0f), 0.6f, 0.6f, Iron, z + 0.07f, -0.25f, group);
+            }, Iron, z + 0.05f, 1.6f, 0f, group).Frame(hand, angle);
+            // El anzuelo: uña curva que nace del lomo y vuelve hacia la empuñadura, con su lengüeta.
+            int gHook = c.NewGroup();
+            c.Strand(Bezier(At(36.5f, 2f), At(34f, 9.5f), At(25f, 8.6f), 6), 2.2f, 0.7f, Iron, z + 0.06f, -0.05f, gHook);
+            c.Poly(new[] { At(25.6f, 9.4f), At(23.2f, 9.2f), At(27.6f, 6.4f) }, Iron, z + 0.065f, 0.8f, -0.05f, gHook);
+            c.Ridge(Bezier(At(35.6f, 3f), At(33.6f, 9.6f), At(26f, 9.4f), 6), 1, gHook, Iron);
+            // Acanaladura central y filo brillante.
+            c.Crease(new[] { At(8f, 0.2f), At(31f, 0.2f) }, 2, group, Iron);
+            c.Ridge(new[] { At(6.5f, -1.8f), At(20f, -2.5f), At(34f, -2.8f), At(40.5f, -1.7f), At(44.5f, 0.3f) }, 2, group, Iron);
+            c.Glint(At(41.5f, -1.2f), group, 0, Iron);
         }
 
         /// <summary>Estela en media luna: fina en la cola, gruesa en la punta; borde exterior brillante.</summary>
