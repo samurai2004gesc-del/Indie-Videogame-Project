@@ -39,27 +39,38 @@ namespace Abismo.EditorTools
         static readonly PixelMaterial SkinDark = new PixelMaterial(Ramp.Make("26323a", 4, 0.08f, 0.35f, 1.5f)) { Ambient = 0.26f, Rim = 0.5f };
         static readonly PixelMaterial FinMat = new PixelMaterial(Ramp.Make("453b52", 4, 0.1f, 0.38f, 1.6f)) { Ambient = 0.3f, Rim = 0.8f, Dither = 0f };
         static readonly PixelMaterial SpineMat = new PixelMaterial(Ramp.Make("362f3c", 4, 0.06f, 0.4f, 1.6f)) { Ambient = 0.3f, Rim = 0.6f, Dither = 0f };
-        static readonly PixelMaterial ShellMat = new PixelMaterial(Ramp.Make("625a56", 5, 0.1f, 0.32f, 1.48f)) { Ambient = 0.26f, Rim = 0.6f, Dither = 0.03f, Texture = PitNoise };
+        // Concha: picaduras en grupos pegadas a cada placa (coordenadas locales) y brillo de nácar húmedo en las crestas.
+        static readonly PixelMaterial ShellMat = new PixelMaterial(Ramp.Make("625a56", 5, 0.1f, 0.32f, 1.48f))
+        {
+            Ambient = 0.26f, Rim = 0.6f, Dither = 0f, Detail = Patterns.Mottle(2.2f, 0.74f, -1, 619), Specular = PixelCanvas.Hex("e9e2d8"),
+        };
         static readonly PixelMaterial BarnacleMat = new PixelMaterial(Ramp.Make("aca48c", 4, 0.08f, 0.38f, 1.32f)) { Ambient = 0.3f, Rim = 0.5f, Dither = 0f };
         static readonly PixelMaterial BarnacleHole = new PixelMaterial(Ramp.Make("2b2533", 3, 0.05f, 0.6f, 1.4f)) { Ambient = 0.55f, Outline = false, Dither = 0f };
-        static readonly PixelMaterial Cloth = new PixelMaterial(Ramp.Make("34362b", 4, 0.1f, 0.35f, 1.6f)) { Ambient = 0.22f, Rim = 0.55f, Texture = ClothNoise };
-        static readonly PixelMaterial Rope = new PixelMaterial(Ramp.Make("6e5f45", 4, 0.08f)) { Ambient = 0.3f };
-        static readonly PixelMaterial Wood = new PixelMaterial(Ramp.Make("564538", 4, 0.08f, 0.36f, 1.55f)) { Ambient = 0.26f, Rim = 0.5f, Dither = 0f, Texture = GrainNoise };
-        static readonly PixelMaterial Iron = new PixelMaterial(Ramp.Make("67716f", 5, 0.08f, 0.32f, 1.42f)) { Gloss = 0.45f, Ambient = 0.3f, Rim = 0.45f, Dither = 0f, Texture = RustNoise };
+        // Arpillera y redes podridas: tejido en relieve pegado a cada harapo.
+        static readonly PixelMaterial Cloth = new PixelMaterial(Ramp.Make("34362b", 4, 0.1f, 0.35f, 1.6f))
+        {
+            Ambient = 0.22f, Rim = 0.55f, Dither = 0f, Bump = Patterns.Weave(2f, 0.5f), BumpStrength = 0.35f,
+        };
+        static readonly PixelMaterial Rope = new PixelMaterial(Ramp.Make("6e5f45", 4, 0.08f)) { Ambient = 0.3f, Detail = HombrePez.Torcida };
+        // Madera de deriva: vetas a lo largo del asta (marco de la cápsula) y nudos.
+        static readonly PixelMaterial Wood = new PixelMaterial(Ramp.Make("564538", 4, 0.08f, 0.36f, 1.55f))
+        {
+            Ambient = 0.26f, Rim = 0.5f, Dither = 0f, Bump = Patterns.Grain(1.6f, 0.6f, 5), BumpStrength = 0.6f,
+            Detail = (u, v) => Mathf.Repeat(v + PixelCanvas.ValueNoise(u / 7f, 0.5f, 0, 9) * 1.6f, 1.6f) < 0.45f ? -1 : 0,
+        };
+        // Hierro oxidado: picado en grupos (pegado a la pieza), filo con brillo especular y manchas de óxido (tinte).
+        static readonly PixelMaterial Iron = new PixelMaterial(Ramp.Make("67716f", 5, 0.08f, 0.32f, 1.42f))
+        {
+            Gloss = 0.45f, Ambient = 0.3f, Rim = 0.45f, Dither = 0f, Specular = PixelCanvas.Hex("f2fffb"), SpecularAt = 0.9f,
+            Detail = (u, v) => PixelCanvas.ValueNoise(u / 2.4f, v / 2f, 0, 77) > 0.72f ? -1 : 0,
+        };
+        static readonly Color32 Rust = PixelCanvas.Hex("8a4a26");
         static readonly PixelMaterial CoralMat = new PixelMaterial(Ramp.Make("7a4a47", 4, 0.08f, 0.38f, 1.45f)) { Ambient = 0.3f, Rim = 0.5f, Dither = 0f };
-        static readonly PixelMaterial ClawMat = new PixelMaterial(Ramp.Make("b3a885", 4, 0.1f, 0.4f, 1.3f)) { Ambient = 0.35f, Gloss = 0.3f, Dither = 0f };
-        static readonly PixelMaterial GillMat = new PixelMaterial(Ramp.Make("5a2430", 4, 0.06f, 0.45f, 1.3f)) { Ambient = 0.3f, Rim = 0.1f, Dither = 0f, Outline = false };
+        static readonly PixelMaterial ClawMat = new PixelMaterial(Ramp.Make("b3a885", 4, 0.1f, 0.4f, 1.3f))
+        {
+            Ambient = 0.35f, Gloss = 0.3f, Dither = 0f, SpecularAt = 0.8f, SpecularPower = 16f, Specular = PixelCanvas.Hex("fffbe6"),
+        };
         static readonly PixelMaterial MouthIn = new PixelMaterial(Ramp.Make("3a1a26", 3, 0.05f, 0.5f, 1.3f)) { Ambient = 0.5f, Outline = false };
-
-        static readonly PixelMaterial EyeRing = PixelMaterial.Glow("5e5a1c");
-        static readonly PixelMaterial EyeMid = PixelMaterial.Glow("a69e38");
-        static readonly PixelMaterial EyeCore = PixelMaterial.Glow("ddd578");
-        static readonly PixelMaterial EyeRingHot = PixelMaterial.Glow("948824");
-        static readonly PixelMaterial EyeMidHot = PixelMaterial.Glow("e4d846");
-        static readonly PixelMaterial EyeCoreHot = PixelMaterial.Glow("fffbcc");
-        static readonly PixelMaterial EyeDull = PixelMaterial.Glow("3e3c26");
-        static readonly PixelMaterial EyeDullMid = PixelMaterial.Glow("5e5a36");
-        static readonly PixelMaterial Pupil = PixelMaterial.Glow("120f0c");
 
         /// <summary>Nácar: rampa iridiscente hecha a mano (índigo → verde mar → rosa → blanco perla).</summary>
         static readonly Color32[] NacreRamp =
@@ -72,28 +83,35 @@ namespace Abismo.EditorTools
         static readonly PixelMaterial SmearMid = new PixelMaterial(new[] { new Color32(204, 214, 210, 200) }) { Emissive = true, Outline = false, ReceivesContactShadow = false };
         static readonly PixelMaterial SmearSoft = new PixelMaterial(new[] { new Color32(118, 140, 140, 140) }) { Emissive = true, Outline = false, ReceivesContactShadow = false };
 
-        static float ClothNoise(int x, int y) => (PixelCanvas.Hash(x / 2, y / 3, 41) - 0.5f) * 0.08f;
-        static float RustNoise(int x, int y) => PixelCanvas.ValueNoise(x / 3f, y / 3f, 0, 77) > 0.72f ? -0.22f : 0f;
-        static float PitNoise(int x, int y) => PixelCanvas.ValueNoise(x / 2.2f, y / 2.2f, 0, 619) > 0.74f ? -0.18f : 0f;
-        static float GrainNoise(int x, int y) => (PixelCanvas.Hash(x / 3, y, 5) - 0.5f) * 0.1f;
-
-        /// <summary>Piel con manchas en grupos (no píxeles sueltos) que se mueven con el cuerpo.</summary>
-        static PixelMaterial SkinFor(int ox, int oy) => new PixelMaterial(SkinRamp)
+        // Piel húmeda: relieve por pieza (escamas en racimos, verrugas) y brillo especular puntual en las crestas.
+        static readonly PixelMaterial SkinMat = new PixelMaterial(SkinRamp)
         {
-            Ambient = 0.24f, Rim = 0.62f, Dither = 0.04f,
-            Texture = (x, y) =>
-            {
-                float n = PixelCanvas.ValueNoise((x - ox) / 2.6f, (y - oy) / 2.6f, 0, 913);
-                if (n > 0.74f) return -0.2f;
-                float m = PixelCanvas.ValueNoise((x - ox) / 1.8f, (y - oy) / 1.8f, 0, 377);
-                return m > 0.82f ? 0.1f : 0f;
-            },
+            Ambient = 0.24f, Rim = 0.62f, Dither = 0.02f, SpecularAt = 0.9f, SpecularPower = 30f, Specular = PixelCanvas.Hex("bfe0d4"),
         };
-
-        static PixelMaterial BellyFor(int ox, int oy) => new PixelMaterial(BellyRamp)
+        static readonly PixelMaterial BellyMat = new PixelMaterial(BellyRamp)
         {
-            Ambient = 0.3f, Rim = 0.4f, Dither = 0.04f,
-            Texture = (x, y) => PixelCanvas.ValueNoise((x - ox) / 2.2f, (y - oy) / 2.2f, 0, 51) > 0.76f ? -0.16f : 0f,
+            Ambient = 0.3f, Rim = 0.4f, Dither = 0.02f, SpecularAt = 0.86f, SpecularPower = 30f, Specular = PixelCanvas.Hex("f0eed8"),
+        };
+        // Escamas: grandes en el lomo y la joroba del veterano, más finas hacia el vientre; escamitas en cráneo y miembros.
+        static readonly HombrePez.Escamas TorsoScales = new HombrePez.Escamas
+        {
+            Grande = 6.5f, Fina = 4.5f, V0 = -3f, V1 = 6f, Racimo = 0.65f, LomoDesde = 5f, Hondo = 1f, Verrugas = 0.28f, Semilla = 23,
+        };
+        static readonly HombrePez.Escamas HeadScales = new HombrePez.Escamas
+        {
+            Grande = 4.5f, Fina = 4f, V0 = 2f, V1 = 6f, Racimo = 0.8f, LomoDesde = 5f, VMin = 2.4f, UMax = 9f, Hondo = 0.9f, Verrugas = 0.35f, Semilla = 29,
+        };
+        static readonly HombrePez.Escamas LimbScales = new HombrePez.Escamas
+        {
+            Grande = 4.2f, Fina = 4.2f, Racimo = 0.6f, HaciaU = true, Hondo = 0.8f, Verrugas = 0.22f, Semilla = 31,
+        };
+        static readonly HombrePez.Pliegues BellyFolds = new HombrePez.Pliegues { Periodo = 2.6f, Ondula = 0.6f, Alto = 0.8f, Semilla = 6 };
+        static readonly HombrePez.Pliegues ThroatFolds = new HombrePez.Pliegues { Periodo = 2.2f, Ondula = 0.4f, Alto = 0.7f, Semilla = 3 };
+        /// <summary>Estrías de crecimiento concéntricas de una concha (placas, grebas, hombreras).</summary>
+        static readonly System.Func<float, float, float> Growth = (u, v) =>
+        {
+            float t = Mathf.Repeat(Mathf.Sqrt(u * u + v * v * 1.3f), 1.8f) / 1.8f;
+            return (1f - Mathf.Abs(t * 2f - 1f)) * 0.5f;
         };
 
         // ------------------------------------------------------------------
@@ -434,8 +452,8 @@ namespace Abismo.EditorTools
             float squash = 1f - 0.2f * slump;
             Vector2 T(float u, float v) => Add(hip, Add(Scale(U, u), Scale(B, v * squash)));
 
-            var Skin = SkinFor(Mathf.RoundToInt(hip.x), Mathf.RoundToInt(hip.y));
-            var Belly = BellyFor(Mathf.RoundToInt(hip.x), Mathf.RoundToInt(hip.y));
+            var Skin = SkinMat;
+            var Belly = BellyMat;
 
             int gTorso = c.NewGroup(), gNeck = c.NewGroup(), gLegF = c.NewGroup(), gLegB = c.NewGroup(), gPlates = c.NewGroup();
             int gArmF = c.NewGroup(), gArmB = c.NewGroup(), gFin = c.NewGroup(), gClothF = c.NewGroup(), gClothB = c.NewGroup();
@@ -484,10 +502,15 @@ namespace Abismo.EditorTools
                     B, ta, p["fin"], p["finWave"], gFin);
 
             // --- Tronco: vientre, pecho ancho, joroba ---
-            c.Capsule(T(0f, 0.5f), T(12f, 0f), 8.6f, 9.4f, Skin, 4f, 0f, gTorso);
-            c.Ellipse(T(16f, 1.5f), 9.6f, 10.4f * squash, ta, Skin, 4f, 0f, gTorso);
-            c.Ellipse(T(20.5f, 3f), 6.8f, 8f * squash, ta, Skin, 4f, 0f, gTorso);
-            c.Ellipse(T(5f, -5.4f), 6.4f, 4.6f * squash, ta, Belly, 4.2f, 0f, gTorso);
+            HombrePez.Relieve(c.Capsule(T(0f, 0.5f), T(12f, 0f), 8.6f, 9.4f, Skin, 4f, 0f, gTorso), TorsoScales, hip, ta);
+            HombrePez.Relieve(c.Ellipse(T(16f, 1.5f), 9.6f, 10.4f * squash, ta, Skin, 4f, 0f, gTorso), TorsoScales, hip, ta);
+            HombrePez.Relieve(c.Ellipse(T(20.5f, 3f), 6.8f, 8f * squash, ta, Skin, 4f, 0f, gTorso), TorsoScales, hip, ta);
+            HombrePez.Relieve(c.Ellipse(T(5f, -5.4f), 6.4f, 4.6f * squash, ta, Belly, 4.2f, 0f, gTorso), BellyFolds, hip, ta);
+            // Línea lateral (poros) y percebes en la joroba
+            for (int i = 0; i < 7; i++)
+                c.Dot(T(1.5f + i * 2.6f, 3.4f + Mathf.Sin(i * 0.9f) * 0.4f), -2, gTorso, Skin);
+            HombrePez.Percebes(c, T(18.5f, 10.4f), 3, 1.1f, 4.08f, 71);
+            HombrePez.Percebes(c, T(9f, 9f), 2, 1.2f, 4.08f, 73);
 
             // Coraza de conchas: escamas superpuestas en el pecho (de abajo arriba, cada fila tapa la anterior)
             DrawPlate(c, T(10.5f, -6.4f), ta, 4.6f, 5.2f * squash, 4.5f, gPlates);
@@ -495,6 +518,9 @@ namespace Abismo.EditorTools
             DrawPlate(c, T(19f, -5.6f), ta, 4.6f, 5.6f * squash, 4.6f, gPlates);
             DrawPlate(c, T(16.5f, -1.5f), ta, 4.4f, 4.6f * squash, 4.52f, gPlates);
             Barnacles(c, T(13f, -3.2f), 3, 1.2f, 4.7f, 31);
+            // Algas enredadas en el cinturón
+            HombrePez.Alga(c, T(2.4f, -4.6f), 9f, sway * 1.2f, p["finWave"] * 0.5f, 4.95f, 81);
+            HombrePez.Alga(c, T(2.6f, 5.6f), 7f, sway * 1.5f, p["finWave"] * 0.5f + 1.7f, 4.95f, 82);
 
             // Cinturón de cuerda con conchas colgando
             c.Capsule(T(3f, -9.6f), T(3f, 8.6f), 1.3f, 1.3f, Rope, 4.8f, 0f, gBelt);
@@ -503,12 +529,12 @@ namespace Abismo.EditorTools
                 var at = T(2.2f, -7.5f + i * 4.6f);
                 var tip = Add(at, V(0.6f - sway * 0.8f, -3.4f - i % 2));
                 c.Capsule(at, tip, 0.5f, 0.5f, Rope, 4.85f, 0f, gBelt);
-                c.Ellipse(Add(tip, V(0f, -1.4f)), 1.7f, 1.9f, 0f, ShellMat, 4.9f, 0f, gBelt, 0.2f);
+                c.Ellipse(Add(tip, V(0f, -1.4f)), 1.7f, 1.9f, 0f, ShellMat, 4.9f, 0f, gBelt, 0.2f).WithBump(Patterns.Ridges(1.2f, 0.6f), 0.8f);
             }
 
             // Cuello y garganta pálida
-            c.Capsule(T(20f, -0.5f), hp, 7f, 6f, Skin, 5f, 0f, gNeck);
-            c.Capsule(T(21f, -5.2f), Hd(1.6f, -4.4f), 2.6f, 2.4f, Belly, 5.1f, 0f, gNeck);
+            HombrePez.Relieve(c.Capsule(T(20f, -0.5f), hp, 7f, 6f, Skin, 5f, 0f, gNeck), TorsoScales, hip, ta);
+            HombrePez.Relieve(c.Capsule(T(21f, -5.2f), Hd(1.6f, -4.4f), 2.6f, 2.4f, Belly, 5.1f, 0f, gNeck), ThroatFolds);
 
             // Pierna delantera y harapo delantero (cuelga por delante del muslo)
             DrawLeg(c, hip, kneeF, ankleF, p["fFa"], 6f, 0f, gLegF, Skin, true);
@@ -564,8 +590,8 @@ namespace Abismo.EditorTools
         void DrawLeg(ShadedCanvas c, Vector2 hip, Vector2 knee, Vector2 ankle, float footA, float z, float shade, int group, PixelMaterial skin, bool front)
         {
             // Muslo grueso de rana, espinilla con greba de concha y pie largo palmeado.
-            c.Capsule(hip, knee, 6f, 4.2f, skin, z, shade, group);
-            c.Capsule(knee, ankle, 3.9f, 2.3f, skin, z + 0.02f, shade, group);
+            HombrePez.Relieve(c.Capsule(hip, knee, 6f, 4.2f, skin, z, shade, group), LimbScales);
+            HombrePez.Relieve(c.Capsule(knee, ankle, 3.9f, 2.3f, skin, z + 0.02f, shade, group), LimbScales);
             // Greba: una concha alargada atada sobre la espinilla
             var sAxis = Sub(ankle, knee);
             float sLen = Mathf.Max(0.01f, Mathf.Sqrt(sAxis.x * sAxis.x + sAxis.y * sAxis.y));
@@ -574,13 +600,19 @@ namespace Abismo.EditorTools
             if (sSide.x < 0f) sSide = Scale(sSide, -1f);
             var g0 = Add(Add(knee, Scale(sAxis, 1.5f)), Scale(sSide, 1.6f));
             var g1 = Add(Add(knee, Scale(sAxis, sLen * 0.78f)), Scale(sSide, 1f));
-            c.Capsule(g0, g1, 2.5f, 1.6f, ShellMat, z + 0.03f, shade - 0.08f, group);
+            c.Capsule(g0, g1, 2.5f, 1.6f, ShellMat, z + 0.03f, shade - 0.08f, group).WithBump(Patterns.Ridges(1.6f, 0.6f), 0.9f);
             c.Capsule(Mix(g0, g1, 0.25f), Mix(g0, g1, 0.6f), 0.5f, 0.5f, ShellMat, z + 0.035f, shade - 0.3f, group);
+            // Ligaduras de cuerda que sujetan la greba
+            foreach (float t in new[] { 0.2f, 0.75f })
+            {
+                var at = Mix(g0, g1, t);
+                c.Capsule(Add(at, Scale(sSide, -2.8f)), Add(at, Scale(sSide, 2.4f)), 0.55f, 0.55f, Rope, z + 0.04f, shade, group);
+            }
             if (front) Barnacles(c, Add(knee, V(1.5f, 1.8f)), 2, 1.1f, z + 0.04f, 13);
 
             // Pie: metatarso hasta la bola, dedos palmeados y uñas.
             var ball = Add(ankle, Dir(footA, FootLen));
-            c.Capsule(ankle, ball, 2.5f, 1.7f, skin, z + 0.03f, shade, group);
+            HombrePez.Relieve(c.Capsule(ankle, ball, 2.5f, 1.7f, skin, z + 0.03f, shade, group), LimbScales);
             float toeA = footA + 52f;
             float[] spread = { -4f, 9f, 22f };
             float[] lenT = { 6.2f, 5.6f, 4.4f };
@@ -595,17 +627,18 @@ namespace Abismo.EditorTools
                 var tip = Add(ball, Scale(dir, lenT[i]));
                 c.Capsule(ball, tip, 1.2f, 0.8f, skin, z + 0.04f + i * 0.001f, shade, group);
                 c.Capsule(tip, Add(tip, Dir(ta2 - (tip.y < 2f ? 0f : 25f), 2f)), 0.8f, 0.3f, ClawMat, z + 0.045f, shade, group);
+                c.Dot(Add(ball, Scale(dir, lenT[i] * 0.55f)), 1, group, skin);
                 web.Add(Add(ball, Scale(dir, lenT[i] * 0.85f)));
             }
-            c.Poly(web.ToArray(), FinMat, z + 0.035f, 1f, shade, group);
+            c.Poly(web.ToArray(), FinMat, z + 0.035f, 1f, shade, group).WithDetail(HombrePez.Membrana(ball, web[2], lenT[1]));
         }
 
         /// <summary>Brazo con aleta espinosa en el antebrazo; la mano empuña el arpón o queda libre (garra).</summary>
         void DrawArm(ShadedCanvas c, Vector2 shoulder, Vector2 elbow, Vector2 hand, float z, float shade, int group, PixelMaterial skin,
                      bool showHand, bool fist, float fistAngle)
         {
-            c.Capsule(shoulder, elbow, 4.4f, 3.3f, skin, z, shade, group);
-            c.Capsule(elbow, hand, 3.4f, 2.7f, skin, z + 0.05f, shade, group);
+            HombrePez.Relieve(c.Capsule(shoulder, elbow, 4.4f, 3.3f, skin, z, shade, group), LimbScales);
+            HombrePez.Relieve(c.Capsule(elbow, hand, 3.4f, 2.7f, skin, z + 0.05f, shade, group), LimbScales);
             // Percebes incrustados en el codo
             Barnacles(c, Mix(elbow, hand, 0.12f), 2, 1f, z + 0.07f, group * 5 + 1);
             // Espinas membranosas en el antebrazo (lado de fuera)
@@ -618,9 +651,10 @@ namespace Abismo.EditorTools
             var f1 = Add(elbow, Scale(fa, flen * 0.65f));
             var t0 = Add(Add(f0, Scale(outSide, 5.6f)), Scale(fa, -2f));
             var t1 = Add(Add(f1, Scale(outSide, 4.2f)), Scale(fa, -0.8f));
-            c.Poly(new[] { f0, t0, Mix(Mix(f0, t0, 0.6f), Mix(f1, t1, 0.6f), 0.5f), t1, f1 }, FinMat, z - 0.02f, 1f, shade, group);
-            c.Capsule(f0, t0, 0.8f, 0.3f, SpineMat, z - 0.01f, shade, group);
-            c.Capsule(f1, t1, 0.7f, 0.3f, SpineMat, z - 0.01f, shade, group);
+            HombrePez.Aleta(c, new[] { f0, f1 }, new[] { t0, t1 }, V(0f, 0f), FinMat, SpineMat, z - 0.02f, shade, group, 1f, 0.8f, 0f, 0f, group * 3 + 1);
+            // Pliegue del codo
+            var across = V(-fa.y, fa.x);
+            c.Crease(new[] { Add(elbow, Add(Scale(fa, 0.8f), Scale(across, 2f))), Add(elbow, Add(Scale(fa, 0.2f), Scale(across, 0.2f))) }, 1, group, skin);
             if (!showHand) return;
             if (fist)
                 DrawFist(c, hand, fistAngle, z + 0.1f, shade, group, skin);
@@ -645,6 +679,7 @@ namespace Abismo.EditorTools
                 float a = -2.2f + i * 2.2f;
                 c.Capsule(At(a, 2.6f), At(a + 0.4f, -2.2f), 1.25f, 1.05f, skin, z + 0.2f + i * 0.001f, shade, group);
                 c.Capsule(At(a + 0.4f, -2.2f), At(a + 1.2f, -3.6f), 0.8f, 0.3f, ClawMat, z + 0.21f, shade, group);
+                c.Dot(At(a, 2.4f), 1, group, skin);
             }
         }
 
@@ -652,7 +687,7 @@ namespace Abismo.EditorTools
         void DrawClaw(ShadedCanvas c, Vector2 wristPt, float ang, float grip, float palm, float z, float shade, int group, PixelMaterial skin)
         {
             var palmC = Add(wristPt, Dir(ang, 2.4f));
-            c.Ellipse(palmC, 3.6f, 2.9f, ang, skin, z, shade, group);
+            HombrePez.Relieve(c.Ellipse(palmC, 3.6f, 2.9f, ang, skin, z, shade, group), LimbScales);
             float[] spread = { -28f, 0f, 26f };
             float[] len1 = { 4.4f, 5.4f, 4.6f };
             float curl = palm * (20f + 50f * grip);
@@ -665,10 +700,12 @@ namespace Abismo.EditorTools
                 var tip = Add(k1, Dir(fa + curl, 4.4f));
                 c.Capsule(k0, k1, 1.35f, 1.1f, skin, z + 0.02f, shade, group);
                 c.Capsule(k1, tip, 1.1f, 0.3f, ClawMat, z + 0.03f, shade, group);
+                c.Dot(k0, 1, group, skin);
+                c.Dot(Mix(k0, k1, 0.96f), -1, group, skin);
                 web.Add(Mix(k0, k1, 0.92f));
             }
             web.Add(Add(palmC, Dir(ang + 90f, 2.2f)));
-            c.Poly(web.ToArray(), FinMat, z + 0.01f, 1f, shade, group);
+            c.Poly(web.ToArray(), FinMat, z + 0.01f, 1f, shade, group).WithDetail(HombrePez.Membrana(palmC, Mix(web[2], web[3], 0.5f), 5.4f));
         }
 
         /// <summary>Hombrera: una lapa gigante (cono de concha con estrías) cubierta de percebes.</summary>
@@ -680,7 +717,10 @@ namespace Abismo.EditorTools
             var baseF = Add(center, Add(Dir(ta, -3.4f), Dir(ta + 90f, -7.2f)));
             var baseB = Add(center, Add(Dir(ta, -2.4f), Dir(ta + 90f, 6.6f)));
             c.Poly(new[] { apex, Add(Mix(apex, baseB, 0.55f), Dir(ta + 90f, 1.6f)), baseB, Add(Mix(baseB, baseF, 0.5f), Dir(ta, -2.4f)), baseF,
-                           Add(Mix(apex, baseF, 0.5f), Dir(ta + 90f, -1.6f)) }, ShellMat, z, 2.4f, shade, group, 0.1f, 0.25f);
+                           Add(Mix(apex, baseF, 0.5f), Dir(ta + 90f, -1.6f)) }, ShellMat, z, 2.4f, shade, group, 0.1f, 0.25f)
+             .Frame(apex, ta).WithBump(Growth, 0.7f);
+            // Labio de la lapa: el canto de abajo recoge la luz y deja una sombra sobre el hombro
+            c.Ridge(new[] { Add(baseF, Dir(ta, 0.9f)), Add(Mix(baseB, baseF, 0.5f), Dir(ta, -1.5f)), Add(baseB, Dir(ta, 0.9f)) }, 1, group, ShellMat);
             // Estrías radiales desde el ápice (alternan luz y sombra)
             for (int i = 0; i < 6; i++)
             {
@@ -690,28 +730,25 @@ namespace Abismo.EditorTools
             }
             c.Ellipse(apex, 1.2f, 1.1f, 0f, ShellMat, z + 0.02f, shade + 0.2f, group);
             Barnacles(c, Add(center, Add(Dir(ta, -1.2f), Dir(ta + 90f, 4.6f))), 2, 1.1f, z + 0.03f, group * 7 + 3);
+            c.Glint(Add(apex, Dir(ta - 60f, 1.2f)), group, 0, ShellMat);
         }
 
         /// <summary>Placa de la coraza: concha con borde inferior claro y estrías.</summary>
         void DrawPlate(ShadedCanvas c, Vector2 center, float ta, float rx, float ry, float z, int group)
         {
-            c.Ellipse(center, rx, ry, ta, ShellMat, z, 0f, 0, 0.15f);
-            c.Capsule(Add(center, Dir(ta, rx * 0.2f)), Add(center, Dir(ta, -rx * 0.7f)), 0.45f, 0.45f, ShellMat, z + 0.001f, -0.22f, 0);
+            int g = c.NewGroup();
+            // Concha con estrías de crecimiento concéntricas desde la charnela (arriba) y bisel: canto claro y sombra debajo.
+            var hinge = Add(center, Dir(ta, rx * 0.85f));
+            c.Ellipse(center, rx, ry, ta, ShellMat, z, 0f, g, 0.15f).Frame(hinge, ta).WithBump(Growth, 0.8f);
+            c.Capsule(Add(center, Dir(ta, rx * 0.2f)), Add(center, Dir(ta, -rx * 0.7f)), 0.45f, 0.45f, ShellMat, z + 0.001f, -0.22f, g);
+            var lip = new Vector2[5];
+            for (int i = 0; i < 5; i++) lip[i] = Add(center, Add(Dir(ta, -rx * 0.78f * Mathf.Cos((i - 2) * 0.55f)), Dir(ta + 90f, ry * 0.8f * Mathf.Sin((i - 2) * 0.55f))));
+            c.Ridge(lip, 1, g, ShellMat);
+            c.Glint(Add(center, Add(Dir(ta, rx * 0.35f), Dir(ta + 90f, -ry * 0.3f))), g, 0, ShellMat);
         }
 
-        /// <summary>Racimo de percebes: conos pálidos con el agujero oscuro.</summary>
-        static void Barnacles(ShadedCanvas c, Vector2 at, int count, float size, float z, int seed)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                float ang = PixelCanvas.Hash(i, seed, 1) * 360f;
-                float dist = i == 0 ? 0f : size * (1.3f + PixelCanvas.Hash(i, seed, 2) * 0.9f);
-                var pos = Add(at, Dir(ang, dist));
-                float r = size * (0.85f + PixelCanvas.Hash(i, seed, 3) * 0.5f);
-                c.Ellipse(pos, r, r * 0.9f, 0f, BarnacleMat, z + i * 0.002f);
-                c.Ellipse(Add(pos, V(0.2f, 0.4f)), Mathf.Max(0.55f, r * 0.42f), Mathf.Max(0.5f, r * 0.32f), 0f, BarnacleHole, z + 0.001f + i * 0.002f);
-            }
-        }
+        /// <summary>Racimo de percebes (ver <see cref="HombrePez.Percebes"/>).</summary>
+        static void Barnacles(ShadedCanvas c, Vector2 at, int count, float size, float z, int seed) => HombrePez.Percebes(c, at, count, size, z, seed);
 
         /// <summary>Harapo de algas/arpillera colgando del cinturón, con borde roto y vaivén.</summary>
         void DrawRag(ShadedCanvas c, Vector2 a, Vector2 b, float length, float sway, float lean, float z, float shade, int group, int seed)
@@ -734,103 +771,53 @@ namespace Abismo.EditorTools
                 var across = V(-down.y, down.x);
                 var pts = new List<Vector2> { top0, Floor(Add(mid, Scale(across, half * 0.9f))), Floor(Add(Add(end, Scale(across, half * 0.5f)), Scale(down, -1.2f))), end,
                                               Floor(Add(Add(end, Scale(across, -half * 0.4f)), Scale(down, -2.2f))), Floor(Add(mid, Scale(across, -half * 0.8f))), top1 };
-                c.Poly(pts.ToArray(), Cloth, z + i * 0.01f, 1.4f, shade - 0.04f * (i % 2), group, 0.1f, 0f);
+                float ang = Mathf.Atan2(down.y, down.x) * Mathf.Rad2Deg;
+                c.Poly(pts.ToArray(), Cloth, z + i * 0.01f, 1.4f, shade - 0.04f * (i % 2), group, 0.1f, 0f).Frame(top0, ang);
+                // Pliegue a lo largo de la tira, agujero y una hebra suelta en la punta
+                c.Fold(new[] { Mix(top0, top1, 0.5f), Add(mid, Scale(across, half * 0.1f)), Add(end, Scale(down, -2.4f)) }, group, 1, 1, Cloth);
+                if (PixelCanvas.Hash(i, seed, 4) > 0.45f) c.Dot(Add(mid, Scale(down, 1.5f)), -2, group, Cloth);
+                var tip = Floor(Add(end, Scale(across, half * 0.2f)));
+                c.Capsule(tip, Floor(Add(tip, Add(Scale(down, 2.2f), V(-sw * 0.8f, 0f)))), 0.4f, 0.35f, Cloth, z + i * 0.01f, shade, group);
             }
         }
 
         void DrawHead(ShadedCanvas c, Vector2 hp, float hr, Pose p, PixelMaterial skin, PixelMaterial belly)
         {
-            int gHead = c.NewGroup(), gJaw = c.NewGroup(), gMouth = c.NewGroup(), gEye = c.NewGroup(), gFar = c.NewGroup(), gGill = c.NewGroup(), gCheek = c.NewGroup();
+            int gCheek = c.NewGroup();
             const float k = HeadScale;
             Vector2 H(float x, float y) => Add(hp, Rotate(V(x * k, y * k), V(0f, 0f), hr));
-            float jaw = p["jaw"];
-            float jawA = -jaw * 30f;
-            var hinge = V(0.5f, -1.8f);
-            Vector2 J(float x, float y)
-            {
-                var l = Add(hinge, Rotate(V(x, y), V(0f, 0f), jawA));
-                return Add(hp, Rotate(V(l.x * k, l.y * k), V(0f, 0f), hr));
-            }
             float eye = p["eye"];
-            bool hot = eye > 0.45f, dull = eye < -0.25f;
 
-            // Aleta de la mejilla: abanico espinoso tras la mandíbula
+            // Aleta de la mejilla: abanico espinoso tras la mandíbula (membrana con venas)
             float wave = p["finWave"];
             var cb = H(-1.5f, -1.5f);
-            var cheek = new List<Vector2> { H(0.5f, 1f) };
+            var cheekBases = new Vector2[4];
+            var cheekTips = new Vector2[4];
             for (int i = 0; i < 4; i++)
             {
                 float a = hr + 200f + i * 22f + 5f * Mathf.Sin(wave - i * 0.8f);
-                cheek.Add(Add(cb, Dir(a, 6.5f - i * 0.6f)));
+                cheekBases[i] = Add(cb, Dir(a, 0.6f));
+                cheekTips[i] = Add(cb, Dir(a, 6.8f - i * 0.6f));
             }
-            cheek.Add(H(0f, -3.5f));
-            c.Poly(cheek.ToArray(), FinMat, 7.3f, 1.2f, -0.05f, gCheek, -0.2f, 0.1f);
-            for (int i = 0; i < 4; i++)
-            {
-                float a = hr + 200f + i * 22f + 5f * Mathf.Sin(wave - i * 0.8f);
-                c.Capsule(cb, Add(cb, Dir(a, 6.8f - i * 0.6f)), 0.7f, 0.3f, SpineMat, 7.31f, -0.05f, gCheek);
-            }
+            HombrePez.Aleta(c, cheekBases, cheekTips, V(0f, 0f), FinMat, SpineMat, 7.3f, -0.05f, gCheek, 1.2f, 0.7f, -0.2f, 0.1f, 33);
 
-            // Ojo lejano: asoma por encima del cráneo
-            var eyeFar = H(5.4f, 8.2f);
-            c.Ellipse(eyeFar, 3f * k, 2.8f * k, hr, SkinDark, 7.4f, -0.1f, gFar);
-            c.Ellipse(Add(eyeFar, V(0.5f, 0.6f)), 1.8f * k, 1.6f * k, 0f, dull ? EyeDull : hot ? EyeMid : EyeRing, 7.45f, 0f, gFar);
-
-            // Fauces: interior oscuro y mandíbula inferior pálida (prognata)
-            c.Ellipse(H(7f, -2.6f), 5.6f * k, (1.2f + jaw * 3.2f) * k, hr - jaw * 14f, MouthIn, 7.8f, 0f, gMouth);
-            c.Poly(new[] { J(-1.5f, 1.2f), J(6f, 0.8f), J(12.4f, 0.6f), J(13.8f, -0.6f), J(12.6f, -2.8f), J(6.5f, -4.8f), J(0f, -4.5f), J(-2.6f, -2f) },
-                   belly, 7.9f, 2f, 0f, gJaw);
-
-            // Cráneo y hocico
-            c.Ellipse(H(4.2f, 2.6f), 7.6f * k, 6.1f * k, hr - 8f, skin, 8f, 0f, gHead);
-            c.Ellipse(H(10.2f, 0.6f), 4.6f * k, 3.3f * k, hr - 6f, skin, 8.02f, 0f, gHead);
-            // Ceja ósea (veterano): un reborde sobre el ojo
+            // Cabeza de pez compartida con el Profundo: cráneo escamoso, mandíbula prognata, branquias, dientes y ojo.
+            int gHead = HombrePez.Cabeza(c, hp, hr, k, p["jaw"], p["gill"], eye, skin, belly, SkinDark, MouthIn, HeadScales, true, 0.6f);
+            // Ceja ósea (veterano): un reborde sobre el ojo con su arista iluminada
             c.Capsule(H(4.6f, 8.2f), H(10.4f, 7f), 1.3f, 0.9f, skin, 8.05f, 0.08f, gHead);
-            // Comisura: línea de la boca, ancha y caída
-            if (jaw < 0.3f)
-                c.Strand(Bezier(H(1f, -2.6f), H(6f, -1.2f), H(13.2f, -0.9f), 5), 0.55f, 0.45f, MouthIn, 8.05f, 0f, gMouth);
-            else
-                c.Capsule(H(0.6f, -2.8f), H(2.4f, -2f), 0.6f, 0.5f, MouthIn, 8.05f, 0f, gMouth);
-
-            // Branquias
-            float gill = p["gill"];
-            for (int i = 0; i < 3; i++)
-            {
-                var a = H(0.6f - i * 1.9f, -4f + i * 0.4f);
-                var m = H(1.6f - i * 1.9f, -1f);
-                var b = H(-0.2f - i * 1.9f, 2f - i * 0.5f);
-                c.Strand(Bezier(a, m, b, 4), 0.35f + gill * 0.4f, 0.3f + gill * 0.25f, GillMat, 8.15f, 0f, gGill);
-            }
+            c.Ridge(new[] { H(5f, 9.1f), H(10.2f, 7.9f) }, 1, gHead);
+            // Cicatriz vieja que cruza el hocico
+            c.Crease(new[] { H(9.6f, 3.4f), H(11.4f, 1.2f), H(12.2f, -0.2f) }, 2, gHead);
 
             // Percebes incrustados en el cráneo
             Barnacles(c, H(-0.5f, 6.8f), 3, 1.2f, 8.5f, 57);
             Barnacles(c, H(3.6f, 9f), 1, 1.1f, 8.5f, 91);
 
-            // Dientes de aguja cuando abre la boca
-            if (jaw > 0.3f)
-            {
-                var tooth = PixelCanvas.Hex("d6d0b0");
-                for (int t = 0; t < 4; t++)
-                {
-                    var t0 = H(6f + t * 1.8f, -1.9f);
-                    c.Decal(t0.x, t0.y, tooth);
-                    var t1 = J(5.4f + t * 1.9f, 1f);
-                    c.Decal(t1.x, t1.y, tooth);
-                }
-            }
-
-            // Ojo saltón
-            var E = H(8f, 5.6f);
-            float er = 2.9f * k + 0.6f * Mathf.Max(0f, eye);
-            c.Ellipse(E, er + 1.1f, er + 0.9f, hr, SkinDark, 8.2f, 0f, gEye);
-            c.Ellipse(E, er, er - 0.1f, 0f, dull ? EyeDull : hot ? EyeRingHot : EyeRing, 8.3f, 0f, gEye);
-            c.Ellipse(Add(E, V(0.2f, 0.3f)), er - 0.9f, er - 1f, 0f, dull ? EyeDullMid : hot ? EyeMidHot : EyeMid, 8.31f, 0f, gEye);
-            if (!dull) c.Ellipse(Add(E, V(-0.6f, 1f)), 1f + 0.5f * Mathf.Max(0f, eye), 0.8f + 0.3f * Mathf.Max(0f, eye), 0f, hot ? EyeCoreHot : EyeCore, 8.32f, 0f, gEye);
-            float pr = dull ? 1.6f : 1.2f - 0.4f * Mathf.Max(0f, eye);
-            c.Ellipse(Add(E, Rotate(V(1f, -0.2f), V(0f, 0f), hr)), pr, pr, 0f, Pupil, 8.4f, 0f, gEye);
             if (eye > 0.95f)
             {
                 // Destello del telegrafiado: cruz de luz alrededor del ojo
+                var E = H(8f, 5.6f);
+                float er = 2.9f * k + 0.6f * Mathf.Max(0f, eye);
                 var glint = PixelCanvas.Hex("fff6b8");
                 float g = er + 2.5f;
                 c.Decal(E.x - 0.5f, E.y + g, glint);
@@ -854,17 +841,7 @@ namespace Abismo.EditorTools
                 float a = ta + 90f + sweep + 6f * Mathf.Sin(wave - i * 0.9f);
                 tips[i] = Add(bases[i], Dir(a, lens[i] * (1f + 0.15f * flare)));
             }
-            var poly = new List<Vector2> { bases[0] };
-            for (int i = 0; i < n; i++)
-            {
-                poly.Add(tips[i]);
-                if (i < n - 1) poly.Add(Mix(Mix(bases[i], tips[i], 0.55f), Mix(bases[i + 1], tips[i + 1], 0.55f), 0.5f));
-            }
-            poly.Add(bases[n - 1]);
-            for (int i = n - 1; i >= 1; i--) poly.Add(Sub(bases[i], Scale(back, 2.5f)));
-            c.Poly(poly.ToArray(), FinMat, 2f, 1.6f, 0f, group, -0.2f, 0.3f);
-            for (int i = 0; i < n; i++)
-                c.Capsule(Sub(bases[i], Scale(back, 1.5f)), tips[i], 1.1f, 0.4f, SpineMat, 2.1f, 0f, group);
+            HombrePez.Aleta(c, bases, tips, back, FinMat, SpineMat, 2f, 0f, group, 1.6f, 1.1f, -0.2f, 0.3f, 19);
         }
 
         // ------------------------------------------------------------------
@@ -885,6 +862,10 @@ namespace Abismo.EditorTools
 
             // Asta
             c.Capsule(At(-HarpoonButt, 0f), At(31f, 0f), 1.35f, 1.2f, Wood, z, 0f, group);
+            // Nudos de la madera y una grieta
+            c.Dot(At(-15f, 0.4f), -2, group, Wood);
+            c.Dot(At(12.5f, -0.5f), -2, group, Wood);
+            c.Crease(new[] { At(-22f, -0.3f), At(-17.5f, 0.2f) }, 1, group, Wood);
             c.Ellipse(At(-HarpoonButt - 0.5f, 0f), 1.8f, 1.8f, 0f, Iron, z + 0.01f, 0f, group);
             // Ligaduras de cuerda
             foreach (var a in new[] { -6.5f, 6f, 19f })
@@ -897,12 +878,22 @@ namespace Abismo.EditorTools
             c.Ellipse(At(28.2f, 6.3f), 0.85f, 0.85f, 0f, CoralMat, z + 0.032f, 0.1f, group);
             Barnacles(c, At(22f, 0.8f), 2, 0.95f, z + 0.035f, 77);
             // Cubo de hierro
-            c.Capsule(At(29f, 0f), At(33.5f, 0f), 2f, 1.5f, Iron, z + 0.04f, 0f, group);
+            // Hierro oxidado: manchas de óxido pegadas a la pieza (tinte con máscara local) y picado.
+            var rustMask = Patterns.Spots(1.8f, 0.55f, 41);
+            c.Capsule(At(29f, 0f), At(33.5f, 0f), 2f, 1.5f, Iron, z + 0.04f, 0f, group).WithTint(Rust, 0.6f, rustMask);
+            // Anillas del cubo
+            c.Crease(new[] { At(30.4f, -1.9f), At(30.4f, 1.9f) }, 2, group, Iron);
+            c.Ridge(new[] { At(31.2f, -1.7f), At(31.2f, 1.7f) }, 1, group, Iron);
             // Punta: hoja estrecha con dos pares de lengüetas hacia atrás
-            c.Poly(new[] { At(33f, -1.7f), At(40f, -1.4f), At(HarpoonTip, 0f), At(40f, 1.4f), At(33f, 1.7f) }, Iron, z + 0.05f, 1.2f, 0.05f, group);
-            c.Poly(new[] { At(38f, 1f), At(34f, 4.6f), At(35.5f, 1.4f) }, Iron, z + 0.06f, 0.8f, 0f, group);
-            c.Poly(new[] { At(38f, -1f), At(34f, -4.6f), At(35.5f, -1.4f) }, Iron, z + 0.06f, 0.8f, -0.05f, group);
-            c.Poly(new[] { At(43f, 0.6f), At(40.5f, 3f), At(41f, 0.8f) }, Iron, z + 0.06f, 0.6f, 0f, group);
+            c.Poly(new[] { At(33f, -1.7f), At(40f, -1.4f), At(HarpoonTip, 0f), At(40f, 1.4f), At(33f, 1.7f) }, Iron, z + 0.05f, 1.2f, 0.05f, group)
+             .Frame(grip, angle).WithTint(Rust, 0.5f, rustMask);
+            c.Poly(new[] { At(38f, 1f), At(34f, 4.6f), At(35.5f, 1.4f) }, Iron, z + 0.06f, 0.8f, 0f, group).Frame(grip, angle).WithTint(Rust, 0.55f, rustMask);
+            c.Poly(new[] { At(38f, -1f), At(34f, -4.6f), At(35.5f, -1.4f) }, Iron, z + 0.06f, 0.8f, -0.05f, group).Frame(grip, angle).WithTint(Rust, 0.55f, rustMask);
+            c.Poly(new[] { At(43f, 0.6f), At(40.5f, 3f), At(41f, 0.8f) }, Iron, z + 0.06f, 0.6f, 0f, group).Frame(grip, angle);
+            // Nervio central y filo afilado que brilla
+            c.Crease(new[] { At(34f, 0f), At(42.5f, 0f) }, 1, group, Iron);
+            c.Ridge(new[] { At(36f, 1.2f), At(44.5f, 0.5f) }, 1, group, Iron);
+            c.Glint(At(43.5f, 0.6f), group, 0, Iron);
             // Cabo deshilachado colgando del cubo (movimiento secundario)
             var r0 = At(29.5f, 0f);
             var hang = V(-1.5f - sway * 2.5f, -4.5f);
@@ -1106,6 +1097,21 @@ namespace Abismo.EditorTools
             Groove(Add(sealC, V(-2.5f, 0.2f)), Add(sealC, V(0f, -1f)));
             Groove(Add(sealC, V(2.8f, 3f)), Add(sealC, V(2.5f, 0.2f)));
             Groove(Add(sealC, V(2.5f, 0.2f)), Add(sealC, V(0f, -1f)));
+
+            // Costillas pintadas: la cresta de cada costilla recoge la luz; mellas oscuras en el borde festoneado.
+            if (across > 0.5f)
+            {
+                for (int i = 0; i < RibCount; i++)
+                {
+                    var a0 = Add(Umbo, Dir(RibAngles[i], 8.5f));
+                    var a1 = Add(Umbo, Dir(RibAngles[i], 15f));
+                    float th = RimA + (RimB - RimA) * (i + 0.5f) / RibCount;
+                    var a2 = RimPoint(th, 0.86f);
+                    c.Ridge(new[] { S(a0.x, a0.y), S(a1.x, a1.y), S(a2.x, a2.y) }, 1, g, nacre);
+                    if (PixelCanvas.Hash(i, 3, 17) > 0.6f) c.Dot(S(RimPoint(th + 6f, 0.97f).x, RimPoint(th + 6f, 0.97f).y), -2, g, nacre);
+                }
+                c.Glint(S(5.5f, 12f), g, 0, nacre);
+            }
 
             // Percebes en la parte baja
             if (across > 0.5f)

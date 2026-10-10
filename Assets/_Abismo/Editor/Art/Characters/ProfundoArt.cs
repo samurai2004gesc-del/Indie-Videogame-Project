@@ -30,52 +30,65 @@ namespace Abismo.EditorTools
 
         static readonly Color32[] SkinRamp = Ramp.Make("46625a", 5, 0.1f, 0.3f, 1.5f);
         static readonly Color32[] BellyRamp = Ramp.Make("a19c78", 5, 0.1f, 0.34f, 1.35f);
+        // Piel húmeda: el relieve (escamas, verrugas, pliegues) va en cada pieza; el brillo especular puntual
+        // salta en las crestas que miran a la luz y deja reflejos de 1 px, como piel mojada.
+        static readonly PixelMaterial Skin = new PixelMaterial(SkinRamp)
+        {
+            Ambient = 0.24f, Rim = 0.62f, Dither = 0.02f, SpecularAt = 0.9f, SpecularPower = 30f, Specular = PixelCanvas.Hex("c9e6d6"),
+        };
+        static readonly PixelMaterial Belly = new PixelMaterial(BellyRamp)
+        {
+            Ambient = 0.3f, Rim = 0.4f, Dither = 0.02f, SpecularAt = 0.86f, SpecularPower = 30f, Specular = PixelCanvas.Hex("f4f1dc"),
+        };
         static readonly PixelMaterial SkinDark = new PixelMaterial(Ramp.Make("2f3d3f", 4, 0.08f, 0.35f, 1.5f)) { Ambient = 0.26f, Rim = 0.5f };
         static readonly PixelMaterial FinMat = new PixelMaterial(Ramp.Make("4b3d4d", 4, 0.1f, 0.38f, 1.6f)) { Ambient = 0.3f, Rim = 0.8f, Dither = 0f };
         static readonly PixelMaterial SpineMat = new PixelMaterial(Ramp.Make("3b3139", 4, 0.06f, 0.4f, 1.6f)) { Ambient = 0.3f, Rim = 0.6f, Dither = 0f };
-        static readonly PixelMaterial Shirt = new PixelMaterial(Ramp.Make("5a5343", 5, 0.1f, 0.33f, 1.4f)) { Ambient = 0.24f, Rim = 0.5f, Texture = ClothNoise };
-        static readonly PixelMaterial Trousers = new PixelMaterial(Ramp.Make("323848", 4, 0.08f, 0.35f, 1.5f)) { Ambient = 0.22f, Rim = 0.45f, Texture = ClothNoise };
-        static readonly PixelMaterial Rope = new PixelMaterial(Ramp.Make("7d6c4a", 4, 0.08f)) { Ambient = 0.3f };
-        static readonly PixelMaterial ClawMat = new PixelMaterial(Ramp.Make("b3a885", 4, 0.1f, 0.4f, 1.3f)) { Ambient = 0.35f, Gloss = 0.3f, Dither = 0f };
-        static readonly PixelMaterial GillMat = new PixelMaterial(Ramp.Make("5a2430", 4, 0.06f, 0.45f, 1.3f)) { Ambient = 0.3f, Rim = 0.1f, Dither = 0f, Outline = false };
+        // Ropa de pescador: lona con tejido en relieve pegado a cada pieza (no "nada" al moverse).
+        static readonly PixelMaterial Shirt = new PixelMaterial(Ramp.Make("5a5343", 5, 0.1f, 0.33f, 1.4f))
+        {
+            Ambient = 0.26f, Rim = 0.5f, Dither = 0f, Bump = Patterns.Weave(2f, 0.4f), BumpStrength = 0.25f,
+        };
+        static readonly PixelMaterial Trousers = new PixelMaterial(Ramp.Make("323848", 4, 0.08f, 0.35f, 1.5f))
+        {
+            Ambient = 0.22f, Rim = 0.45f, Dither = 0f, Bump = Patterns.Weave(2f, 0.5f), BumpStrength = 0.35f,
+        };
+        /// <summary>Remiendo del pantalón: arpillera ocre.</summary>
+        static readonly PixelMaterial TrouserPatch = new PixelMaterial(Ramp.Make("675637", 4, 0.1f, 0.36f, 1.45f))
+        {
+            Ambient = 0.24f, Rim = 0.45f, Dither = 0f, Bump = Patterns.Weave(1.5f, 0.6f), BumpStrength = 0.5f,
+        };
+        static readonly PixelMaterial Rope = new PixelMaterial(Ramp.Make("7d6c4a", 4, 0.08f)) { Ambient = 0.3f, Detail = HombrePez.Torcida };
+        static readonly PixelMaterial Button = new PixelMaterial(Ramp.Make("b7ad8a", 3, 0.08f, 0.5f, 1.25f)) { Ambient = 0.4f, Gloss = 0.3f, Dither = 0f, Outline = false };
+        static readonly PixelMaterial ClawMat = new PixelMaterial(Ramp.Make("b3a885", 4, 0.1f, 0.4f, 1.3f))
+        {
+            Ambient = 0.35f, Gloss = 0.3f, Dither = 0f, SpecularAt = 0.8f, SpecularPower = 16f, Specular = PixelCanvas.Hex("fffbe6"),
+        };
         static readonly PixelMaterial MouthIn = new PixelMaterial(Ramp.Make("3a1a26", 3, 0.05f, 0.5f, 1.3f)) { Ambient = 0.5f, Outline = false };
         static readonly PixelMaterial Puddle = new PixelMaterial(Ramp.Make("1f2e2e", 4, 0.06f, 0.5f, 1.9f)) { Ambient = 0.2f, Gloss = 0.9f, Rim = 0.3f, Dither = 0f };
         static readonly PixelMaterial Water = new PixelMaterial(Ramp.Make("5f8a86", 3, 0.06f, 0.6f, 1.5f)) { Ambient = 0.4f, Outline = false, ReceivesContactShadow = false };
-
-        static readonly PixelMaterial EyeRing = PixelMaterial.Glow("5e5a1c");
-        static readonly PixelMaterial EyeMid = PixelMaterial.Glow("a69e38");
-        static readonly PixelMaterial EyeCore = PixelMaterial.Glow("ddd578");
-        static readonly PixelMaterial EyeRingHot = PixelMaterial.Glow("948824");
-        static readonly PixelMaterial EyeMidHot = PixelMaterial.Glow("e4d846");
-        static readonly PixelMaterial EyeCoreHot = PixelMaterial.Glow("fffbcc");
-        static readonly PixelMaterial EyeDull = PixelMaterial.Glow("3e3c26");
-        static readonly PixelMaterial EyeDullMid = PixelMaterial.Glow("5e5a36");
-        static readonly PixelMaterial Pupil = PixelMaterial.Glow("120f0c");
 
         static readonly PixelMaterial SmearCore = new PixelMaterial(new[] { new Color32(246, 242, 206, 245) }) { Emissive = true, Outline = false, ReceivesContactShadow = false };
         static readonly PixelMaterial SmearMid = new PixelMaterial(new[] { new Color32(196, 196, 150, 200) }) { Emissive = true, Outline = false, ReceivesContactShadow = false };
         static readonly PixelMaterial SmearSoft = new PixelMaterial(new[] { new Color32(110, 128, 104, 140) }) { Emissive = true, Outline = false, ReceivesContactShadow = false };
 
-        static float ClothNoise(int x, int y) => (PixelCanvas.Hash(x / 2, y / 3, 41) - 0.5f) * 0.08f;
-
-        /// <summary>Piel con manchas en grupos (no píxeles sueltos) que se mueven con el cuerpo.</summary>
-        static PixelMaterial SkinFor(int ox, int oy) => new PixelMaterial(SkinRamp)
+        // Relieves de la piel (coordenadas locales de cada pieza, así viajan pegados al cuerpo al animar).
+        // Tronco: escamas grandes en el lomo y la joroba, más finas hacia el vientre, en racimos; piel lisa con
+        // verrugas y manchas entre los racimos.
+        static readonly HombrePez.Escamas TorsoScales = new HombrePez.Escamas
         {
-            Ambient = 0.24f, Rim = 0.62f, Dither = 0.04f,
-            Texture = (x, y) =>
-            {
-                float n = PixelCanvas.ValueNoise((x - ox) / 2.6f, (y - oy) / 2.6f, 0, 913);
-                if (n > 0.74f) return -0.2f;
-                float m = PixelCanvas.ValueNoise((x - ox) / 1.8f, (y - oy) / 1.8f, 0, 377);
-                return m > 0.82f ? 0.1f : 0f;
-            },
+            Grande = 6f, Fina = 4.5f, V0 = -3f, V1 = 7f, Racimo = 0.6f, LomoDesde = 6f, Hondo = 1f, Semilla = 3,
         };
-
-        static PixelMaterial BellyFor(int ox, int oy) => new PixelMaterial(BellyRamp)
+        static readonly HombrePez.Escamas HeadScales = new HombrePez.Escamas
         {
-            Ambient = 0.3f, Rim = 0.4f, Dither = 0.04f,
-            Texture = (x, y) => PixelCanvas.ValueNoise((x - ox) / 2.2f, (y - oy) / 2.2f, 0, 51) > 0.76f ? -0.16f : 0f,
+            Grande = 4.5f, Fina = 4f, V0 = 2f, V1 = 6f, Racimo = 0.8f, LomoDesde = 5f, VMin = 2.4f, UMax = 9f, Hondo = 0.9f,
+            Verrugas = 0.3f, Semilla = 9,
         };
+        static readonly HombrePez.Escamas LimbScales = new HombrePez.Escamas
+        {
+            Grande = 4f, Fina = 4f, Racimo = 0.55f, HaciaU = true, Hondo = 0.8f, Verrugas = 0.18f, Semilla = 17,
+        };
+        static readonly HombrePez.Pliegues BellyFolds = new HombrePez.Pliegues { Periodo = 2.6f, Ondula = 0.6f, Alto = 0.8f, Semilla = 5 };
+        static readonly HombrePez.Pliegues ThroatFolds = new HombrePez.Pliegues { Periodo = 2.2f, Ondula = 0.4f, Alto = 0.7f, Semilla = 2 };
 
         // ------------------------------------------------------------------
         // Poses base
@@ -343,9 +356,6 @@ namespace Abismo.EditorTools
             float squash = 1f - 0.22f * slump;
             Vector2 T(float u, float v) => Add(hip, Add(Scale(U, u), Scale(B, v * squash)));
 
-            var Skin = SkinFor(Mathf.RoundToInt(hip.x), Mathf.RoundToInt(hip.y));
-            var Belly = BellyFor(Mathf.RoundToInt(hip.x), Mathf.RoundToInt(hip.y));
-
             int gTorso = c.NewGroup(), gNeck = c.NewGroup(), gLegF = c.NewGroup(), gLegB = c.NewGroup();
             int gArmF = c.NewGroup(), gArmB = c.NewGroup(), gFin = c.NewGroup(), gShirt = c.NewGroup(), gBelt = c.NewGroup();
 
@@ -355,6 +365,10 @@ namespace Abismo.EditorTools
             {
                 var pc = V(hip.x + 12f, 0.6f);
                 c.Ellipse(pc, 8f + 28f * pud, 1.6f + 1.6f * pud, 0f, Puddle, -2f, 0f, 0, 0.5f);
+                // Reflejos alargados en el agua y una onda más clara.
+                c.Glint(Add(pc, V(-4f - 6f * pud, 0.4f)), 0, 0, Puddle);
+                c.Glint(Add(pc, V(5f + 9f * pud, 0.2f)), 0, 0, Puddle);
+                if (pud > 0.4f) c.Ridge(new[] { Add(pc, V(-14f * pud, 0.9f)), Add(pc, V(-4f * pud, 1.3f)) }, 1, 0, Puddle);
             }
 
             // --- Piernas (IK con rodillas hacia delante, como una rana) ---
@@ -377,56 +391,72 @@ namespace Abismo.EditorTools
             var neckBase = T(19.5f, -1.5f);
             var hp = Add(neckBase, Dir(neckA, 6f));
             float hr = -(lean - 32f) * 0.35f + p["head"] + p["neck"] * 0.5f;
+            float sway = p["shirt"];
+            float wave = p["finWave"];
 
             // Brazo y pierna traseros (lejos de la luz)
-            DrawLeg(c, hip, kneeB, ankleB, p["fBa"], 1.5f, -0.13f, gLegB, Skin, false);
-            DrawArm(c, shoulderB, elbowB, handB, armB2, p["wristB"], p["gripB"], p["palmB"], 1f, -0.13f, gArmB, Skin, false, 0f);
+            DrawLeg(c, hip, kneeB, ankleB, p["fBa"], 1.5f, -0.13f, gLegB, false);
+            DrawArm(c, shoulderB, elbowB, handB, armB2, p["wristB"], p["gripB"], p["palmB"], 1f, -0.13f, gArmB, false, 0f, wave);
 
             // --- Aleta dorsal (detrás del tronco) ---
             Vector2 Hd(float x, float y) => Add(hp, Rotate(V(x * HeadScale, y * HeadScale), V(0f, 0f), hr));
             DrawFin(c, new[] { Hd(-2f, 6.4f), T(21.5f, 6.8f), T(18f, 10.4f), T(14f, 11.8f), T(10f, 11.4f), T(6.5f, 9.6f) },
-                    B, ta, p["fin"], p["finWave"], gFin);
+                    B, ta, p["fin"], wave, gFin);
 
-            // --- Tronco: barriga, joroba, pecho ---
-            c.Capsule(T(0f, 0.5f), T(10f, 0f), 7.6f, 8.2f, Skin, 4f, 0f, gTorso);
-            c.Ellipse(T(13f, 3f), 10.2f, 8.8f * squash, ta, Skin, 4f, 0f, gTorso);
-            c.Ellipse(T(17f, -1.5f), 6.8f, 7f * squash, ta, Skin, 4f, 0f, gTorso);
-            // Barriga pálida que asoma por la camisa rota
-            c.Ellipse(T(5.5f, -4.8f), 7.2f, 5.4f * squash, ta, Belly, 4.2f, 0f, gTorso);
+            // --- Tronco: barriga, joroba, pecho (escamas grandes en el lomo, en racimos que siguen la espalda) ---
+            HombrePez.Relieve(c.Capsule(T(0f, 0.5f), T(10f, 0f), 7.6f, 8.2f, Skin, 4f, 0f, gTorso), TorsoScales, hip, ta);
+            HombrePez.Relieve(c.Ellipse(T(13f, 3f), 10.2f, 8.8f * squash, ta, Skin, 4f, 0f, gTorso), TorsoScales, hip, ta);
+            HombrePez.Relieve(c.Ellipse(T(17f, -1.5f), 6.8f, 7f * squash, ta, Skin, 4f, 0f, gTorso), TorsoScales, hip, ta);
+            // Barriga pálida que asoma por la camisa rota: placas ventrales finas, como el vientre de un pez.
+            HombrePez.Relieve(c.Ellipse(T(5.5f, -4.8f), 7.2f, 5.4f * squash, ta, Belly, 4.2f, 0f, gTorso), BellyFolds, hip, ta);
+            // Línea lateral: fila de poros a lo largo del flanco (solo se ve donde asoma la piel).
+            for (int i = 0; i < 7; i++)
+                c.Dot(T(1.5f + i * 2.3f, 2.6f + Mathf.Sin(i * 0.9f) * 0.4f), -2, gTorso, Skin);
+            // Percebes y una lapa agarrados a la joroba.
+            HombrePez.Percebes(c, T(15.5f, 9.4f), 3, 1.05f, 4.08f, 41);
+            HombrePez.Percebes(c, T(8.2f, 7.6f), 1, 1.3f, 4.08f, 43);
 
-            // Pantalón (cadera) y cinturón de cuerda
-            c.Ellipse(T(-1.8f, 0f), 4.6f, 8.6f * squash, ta, Trousers, 4.3f, 0f, gBelt);
+            // Pantalón (cadera) y cinturón de cuerda; la tela se frunce bajo la cuerda.
+            c.Ellipse(T(-1.8f, 0f), 4.6f, 8.6f * squash, ta, Trousers, 4.3f, 0f, gBelt).Frame(hip, ta);
+            foreach (float v in new[] { -6.2f, -3f, 0.4f, 3.6f })
+                c.Fold(new[] { T(1.6f, v), T(-1f, v + 0.6f), T(-3.4f, v + 0.9f) }, gBelt, 2, 1, Trousers);
             c.Capsule(T(2.6f, -8.8f), T(2.6f, 6f), 1.1f, 1.1f, Rope, 4.4f, 0f, gBelt);
-            c.Capsule(T(2.4f, -9.1f), Add(T(2.4f, -9.1f), V(1.2f + p["shirt"] * 0.8f, -4.4f)), 0.8f, 0.6f, Rope, 4.45f, 0f, gBelt);
+            // Nudo y cabo colgando, deshilachado en la punta.
+            int gKnot = c.NewGroup();
+            var knot = T(2.4f, -9.1f);
+            c.Ellipse(knot, 1.6f, 1.4f, ta, Rope, 4.46f, 0f, gKnot);
+            var ropeEnd = Add(knot, V(1.2f + sway * 0.8f, -4.4f));
+            c.Capsule(knot, ropeEnd, 0.8f, 0.6f, Rope, 4.45f, 0f, gKnot);
+            c.Capsule(ropeEnd, Add(ropeEnd, V(-0.6f + sway * 0.4f, -1.6f)), 0.4f, 0.35f, Rope, 4.45f, 0.05f, gKnot);
+            c.Capsule(ropeEnd, Add(ropeEnd, V(0.7f + sway * 0.5f, -1.3f)), 0.4f, 0.35f, Rope, 4.45f, -0.08f, gKnot);
+            // Algas enganchadas en la cuerda (movimiento secundario, desfasado).
+            HombrePez.Alga(c, T(2.3f, -2.6f), 8.5f, sway * 1.2f, wave * 0.5f, 4.47f, 51);
+            HombrePez.Alga(c, T(2.5f, 4f), 6.5f, sway * 1.5f, wave * 0.5f + 1.3f, 4.47f, 52);
 
             // Camisa de pescador hecha jirones: cubre pecho y hombro; la espalda está reventada por la joroba y la aleta.
-            float sway = p["shirt"];
             var shirt = new List<Vector2> { T(21.4f, -2.8f), T(19f, -7.6f), T(14.5f, -9.4f), T(11f, -9.1f) };
             shirt.AddRange(Jagged(T(11f, -9.1f), T(6f, 3.5f), 4, 3.4f, 7, sway));
             shirt.Add(T(6f, 3.5f));
             shirt.AddRange(Jagged(T(6f, 3.5f), T(15.5f, 8.2f), 3, 1.6f, 12, 0f));
             shirt.AddRange(new[] { T(15.5f, 8.2f), T(19.5f, 7f), T(21.8f, 3.8f), T(22.4f, 0.6f) });
-            c.Poly(shirt.ToArray(), Shirt, 4.5f, 2.2f, 0f, gShirt, 0.12f, 0f);
-            // Tapeta con botones: lo poco que queda de "humano"
-            c.Capsule(T(20.6f, -4.6f), T(12.5f, -7.6f), 0.7f, 0.7f, Shirt, 4.55f, -0.22f, gShirt);
-            var button = PixelCanvas.Hex("b7ad8a");
-            foreach (var u in new[] { 18.4f, 15.2f })
-            {
-                var bp = T(u, -5.4f - (20.6f - u) * 0.37f);
-                c.Decal(bp.x, bp.y, button);
-            }
+            c.Poly(shirt.ToArray(), Shirt, 4.5f, 2.2f, 0f, gShirt, 0.12f, 0f).Frame(hip, ta);
+            DrawShirtDetail(c, T, hip, ta, sway, gShirt);
 
-            // Cuello (sale de la camisa) y garganta pálida
-            c.Capsule(T(19f, -0.5f), hp, 5.8f, 5.2f, Skin, 5f, 0f, gNeck);
-            c.Capsule(T(18.8f, -4.4f), Hd(1.6f, -4.6f), 3f, 2.7f, Belly, 5.1f, 0f, gNeck);
-            // Cuello de la camisa
-            c.Poly(new[] { T(22f, -2.4f), T(19.6f, -8f), T(17.8f, -6.4f), T(19.2f, -1.4f) }, Shirt, 5.2f, 1.2f, 0f, gShirt);
+            // Cuello (sale de la camisa) y garganta pálida con pliegues
+            HombrePez.Relieve(c.Capsule(T(19f, -0.5f), hp, 5.8f, 5.2f, Skin, 5f, 0f, gNeck), TorsoScales, hip, ta);
+            var throatA = T(18.8f, -4.4f);
+            HombrePez.Relieve(c.Capsule(throatA, Hd(1.6f, -4.6f), 3f, 2.7f, Belly, 5.1f, 0f, gNeck), ThroatFolds, throatA,
+                              Mathf.Atan2(Hd(1.6f, -4.6f).y - throatA.y, Hd(1.6f, -4.6f).x - throatA.x) * Mathf.Rad2Deg);
+            // Cuello de la camisa, con su canto iluminado
+            int gCollar = c.NewGroup();
+            c.Poly(new[] { T(22f, -2.4f), T(19.6f, -8f), T(17.8f, -6.4f), T(19.2f, -1.4f) }, Shirt, 5.2f, 1.2f, 0f, gCollar).Frame(hip, ta);
+            c.Ridge(new[] { T(21.6f, -2.6f), T(19.4f, -7.6f) }, 1, gCollar, Shirt);
 
             // Pierna delantera
-            DrawLeg(c, hip, kneeF, ankleF, p["fFa"], 6f, 0f, gLegF, Skin, true);
+            DrawLeg(c, hip, kneeF, ankleF, p["fFa"], 6f, 0f, gLegF, true);
 
             // Cabeza
-            DrawHead(c, hp, hr, p, Skin, Belly);
+            HombrePez.Cabeza(c, hp, hr, HeadScale, p["jaw"], p["gill"], p["eye"], Skin, Belly, SkinDark, MouthIn, HeadScales, false, 0.5f);
 
             // Estela de las garras
             if (smear.On)
@@ -435,8 +465,8 @@ namespace Abismo.EditorTools
                 DrawClawSmear(c, shoulderF, reach, smear);
             }
 
-            // Brazo delantero con jirón de manga
-            DrawArm(c, shoulderF, elbowF, handF, armF2, p["wristF"], p["gripF"], p["palmF"], 9.5f, 0f, gArmF, Skin, false, sway);
+            // Brazo delantero
+            DrawArm(c, shoulderF, elbowF, handF, armF2, p["wristF"], p["gripF"], p["palmF"], 9.5f, 0f, gArmF, true, sway, wave);
 
             // Salpicadura al caer
             float splash = p["splash"];
@@ -456,6 +486,36 @@ namespace Abismo.EditorTools
             }
 
             return c;
+        }
+
+        /// <summary>
+        /// Camisa: pliegues que caen del hombro y la joroba, costura del hombro, tapeta cosida con botones de hueso
+        /// (falta uno), un desgarrón por el que asoma la piel y un hilo suelto.
+        /// </summary>
+        void DrawShirtDetail(ShadedCanvas c, System.Func<float, float, Vector2> T, Vector2 hip, float ta, float sway, int gShirt)
+        {
+            // Pliegues (surco oscuro + cresta clara del lado de la luz)
+            c.Fold(new[] { T(18.5f, -6.6f), T(14.5f, -5.4f), T(10f, -5.2f) }, gShirt, 2, 1, Shirt);
+            c.Fold(new[] { T(17.5f, 2.2f), T(13.5f, 1.2f), T(9f, 1.6f) }, gShirt, 2, 1, Shirt);
+            // Costura del hombro (pespunte)
+            c.Stitch(new[] { T(20.6f, -1.6f), T(19.2f, 2.4f), T(17.4f, 6.4f) }, gShirt, 1, 1, 1, Shirt);
+            // Tapeta con pespunte y botones de hueso (uno se perdió: queda el ojal deshilachado)
+            c.Capsule(T(20.6f, -4.6f), T(12.5f, -7.6f), 0.7f, 0.7f, Shirt, 4.55f, -0.22f, gShirt);
+            c.Stitch(new[] { T(20.4f, -3.7f), T(12.6f, -6.7f) }, gShirt, 1, 1, 1, Shirt);
+            int gButton = c.NewGroup();
+            foreach (var u in new[] { 18.4f, 15.2f })
+            {
+                var bp = T(u, -5.4f - (20.6f - u) * 0.37f);
+                c.Ellipse(bp, 0.85f, 0.85f, 0f, Button, 4.58f, 0f, gButton);
+            }
+            c.Dot(T(12.4f, -7.1f), -2, gShirt, Shirt);
+            // Desgarrón junto al bajo: la piel asoma en sombra y el borde deshilachado recoge la luz
+            var hole = new[] { T(7.2f, -0.6f), T(8.8f, -1.2f), T(9.6f, 0.2f), T(8.4f, 1.4f), T(7.4f, 0.9f) };
+            HombrePez.Relieve(c.Poly(hole, Skin, 4.505f, 0.8f, -0.16f, gShirt), TorsoScales, hip, ta);
+            c.Ridge(new[] { T(9.9f, 0.2f), T(8.6f, 1.8f) }, 1, gShirt, Shirt);
+            // Hilo suelto colgando del bajo
+            var th = T(7.4f, -6.2f);
+            c.Capsule(th, Add(th, V(-0.4f - sway * 0.6f, -3.2f)), 0.42f, 0.38f, Shirt, 4.49f, 0.05f, gShirt);
         }
 
         /// <summary>Si la garra se hundiría en el suelo, dobla el antebrazo hacia la horizontal más cercana.</summary>
@@ -489,11 +549,11 @@ namespace Abismo.EditorTools
             return V(hip.x + ux * a - uy * h * bend, hip.y + uy * a + ux * h * bend);
         }
 
-        void DrawLeg(ShadedCanvas c, Vector2 hip, Vector2 knee, Vector2 ankle, float footA, float z, float shade, int group, PixelMaterial skin, bool front)
+        void DrawLeg(ShadedCanvas c, Vector2 hip, Vector2 knee, Vector2 ankle, float footA, float z, float shade, int group, bool front)
         {
-            // Muslo de rana, espinilla fina y pie largo palmeado.
-            c.Capsule(hip, knee, 5f, 3.5f, skin, z, shade, group);
-            c.Capsule(knee, ankle, 3.2f, 1.9f, skin, z + 0.02f, shade, group);
+            // Muslo de rana, espinilla fina con escamitas y pie largo palmeado.
+            HombrePez.Relieve(c.Capsule(hip, knee, 5f, 3.5f, Skin, z, shade, group), LimbScales);
+            HombrePez.Relieve(c.Capsule(knee, ankle, 3.2f, 1.9f, Skin, z + 0.02f, shade, group), LimbScales);
             // Pantalón roto por encima de la rodilla
             var cut = Mix(hip, knee, 0.7f);
             c.Capsule(hip, cut, 5.4f, 4.5f, Trousers, z + 0.05f, shade, group);
@@ -502,18 +562,47 @@ namespace Abismo.EditorTools
             axis = Scale(axis, 1f / len);
             var side = V(-axis.y, axis.x);
             var hem = new List<Vector2> { Add(cut, Scale(side, 4.6f)), Add(Mix(hip, knee, 0.45f), Scale(side, 4.9f)), Add(Mix(hip, knee, 0.45f), Scale(side, -4.9f)), Add(cut, Scale(side, -4.6f)) };
+            var frayed = new List<Vector2>();
             for (int i = 1; i < 6; i++)
             {
                 float t = i / 6f;
                 var e = Add(cut, Scale(side, Mathf.Lerp(-4.6f, 4.6f, t)));
                 float d = (i % 2 == 1 ? 2.8f : 0.6f) * (0.6f + 0.7f * PixelCanvas.Hash(i, front ? 3 : 4, 11));
                 hem.Add(Add(e, Scale(axis, d)));
+                if (i % 2 == 1) frayed.Add(Add(e, Scale(axis, d - 0.4f)));
             }
-            c.Poly(hem.ToArray(), Trousers, z + 0.06f, 1.4f, shade, group);
+            c.Poly(hem.ToArray(), Trousers, z + 0.06f, 1.4f, shade, group).Frame(hip, Mathf.Atan2(axis.y, axis.x) * Mathf.Rad2Deg);
+            // Hilachas del bajo roto
+            foreach (var f0 in frayed)
+                c.Capsule(f0, Add(f0, Add(Scale(axis, 1.6f), V(0f, -0.8f))), 0.4f, 0.35f, Trousers, z + 0.055f, shade + 0.04f, group);
+            // Costura lateral y pliegue del muslo
+            c.Stitch(new[] { Add(Mix(hip, knee, 0.08f), Scale(side, 3.4f)), Add(Mix(hip, knee, 0.6f), Scale(side, 3.1f)) }, group, 1, 1, 1, Trousers);
+            c.Fold(new[] { Add(Mix(hip, knee, 0.15f), Scale(side, -1.2f)), Add(Mix(hip, knee, 0.4f), Scale(side, -2.2f)), Add(Mix(hip, knee, 0.62f), Scale(side, -1.6f)) },
+                   group, 2, 1, Trousers);
+            if (front)
+            {
+                // Remiendo de arpillera cosido en el muslo
+                int gPatch = c.NewGroup();
+                var pq = new[]
+                {
+                    Add(Mix(hip, knee, 0.22f), Scale(side, 1.8f)), Add(Mix(hip, knee, 0.5f), Scale(side, 2.2f)),
+                    Add(Mix(hip, knee, 0.52f), Scale(side, -1.2f)), Add(Mix(hip, knee, 0.24f), Scale(side, -1.6f)),
+                };
+                c.Poly(pq, TrouserPatch, z + 0.07f, 0.8f, shade, gPatch).Frame(hip, Mathf.Atan2(axis.y, axis.x) * Mathf.Rad2Deg);
+                var pcen = Mix(Mix(pq[0], pq[1], 0.5f), Mix(pq[2], pq[3], 0.5f), 0.5f);
+                var inset = new Vector2[5];
+                for (int i = 0; i < 4; i++) inset[i] = Mix(pq[i], pcen, 0.25f);
+                inset[4] = inset[0];
+                c.Stitch(inset, gPatch, 1, 1, 1, TrouserPatch);
+                // Verrugas y un racimo de percebes en la rodilla
+                HombrePez.Percebes(c, Add(knee, Add(Scale(side, 1.2f), V(0.8f, -1.6f))), 2, 0.95f, z + 0.03f, 13);
+            }
+            // Pliegue de la rodilla
+            c.Crease(new[] { Add(knee, Add(Scale(axis, 1.2f), Scale(side, -2.4f))), Add(knee, Add(Scale(axis, 0.4f), Scale(side, -0.6f))) }, 1, group, Skin);
 
             // Pie: metatarso hasta la bola, dedos palmeados y uñas.
             var ball = Add(ankle, Dir(footA, FootLen));
-            c.Capsule(ankle, ball, 2.2f, 1.5f, skin, z + 0.03f, shade, group);
+            HombrePez.Relieve(c.Capsule(ankle, ball, 2.2f, 1.5f, Skin, z + 0.03f, shade, group), LimbScales);
             float toeA = footA + 52f;
             float[] spread = { -4f, 9f, 22f };
             float[] lenT = { 5.6f, 5f, 4f };
@@ -526,18 +615,20 @@ namespace Abismo.EditorTools
                 if (Mathf.Sin(ta2 * Mathf.Deg2Rad) < sinMin) ta2 = Mathf.Asin(Mathf.Clamp(sinMin, -1f, 1f)) * Mathf.Rad2Deg;
                 var dir = Dir(ta2);
                 var tip = Add(ball, Scale(dir, lenT[i]));
-                c.Capsule(ball, tip, 1.1f, 0.75f, skin, z + 0.04f + i * 0.001f, shade, group);
+                c.Capsule(ball, tip, 1.1f, 0.75f, Skin, z + 0.04f + i * 0.001f, shade, group);
                 c.Capsule(tip, Add(tip, Dir(ta2 - (tip.y < 2f ? 0f : 25f), 1.8f)), 0.75f, 0.3f, ClawMat, z + 0.045f, shade, group);
+                // Nudillo del dedo
+                c.Dot(Add(ball, Scale(dir, lenT[i] * 0.55f)), 1, group, Skin);
                 web.Add(Add(ball, Scale(dir, lenT[i] * 0.85f)));
             }
-            c.Poly(web.ToArray(), FinMat, z + 0.035f, 1f, shade, group);
+            c.Poly(web.ToArray(), FinMat, z + 0.035f, 1f, shade, group).WithDetail(HombrePez.Membrana(ball, web[2], lenT[1]));
         }
 
         void DrawArm(ShadedCanvas c, Vector2 shoulder, Vector2 elbow, Vector2 hand, float foreAngle, float wrist, float grip, float palm,
-                     float z, float shade, int group, PixelMaterial skin, bool sleeve, float sway)
+                     float z, float shade, int group, bool front, float sway, float wave)
         {
-            c.Capsule(shoulder, elbow, 3.7f, 2.7f, skin, z, shade, group);
-            c.Capsule(elbow, hand, 2.8f, 2.2f, skin, z + 0.05f, shade, group);
+            HombrePez.Relieve(c.Capsule(shoulder, elbow, 3.7f, 2.7f, Skin, z, shade, group), LimbScales);
+            HombrePez.Relieve(c.Capsule(elbow, hand, 2.8f, 2.2f, Skin, z + 0.05f, shade, group), LimbScales);
             // Espinas membranosas en el antebrazo (lado de fuera)
             var fa = Sub(hand, elbow);
             float flen = Mathf.Max(0.01f, Mathf.Sqrt(fa.x * fa.x + fa.y * fa.y));
@@ -547,35 +638,25 @@ namespace Abismo.EditorTools
             var f1 = Add(elbow, Scale(fa, flen * 0.7f));
             var t0 = Add(Add(f0, Scale(outSide, 4.6f)), Scale(fa, -1.6f));
             var t1 = Add(Add(f1, Scale(outSide, 3.4f)), Scale(fa, -0.6f));
-            c.Poly(new[] { f0, t0, Mix(Mix(f0, t0, 0.6f), Mix(f1, t1, 0.6f), 0.5f), t1, f1 }, FinMat, z - 0.02f, 1f, shade, group);
-            c.Capsule(f0, t0, 0.7f, 0.3f, SpineMat, z - 0.01f, shade, group);
-            c.Capsule(f1, t1, 0.6f, 0.3f, SpineMat, z - 0.01f, shade, group);
-            if (sleeve)
+            HombrePez.Aleta(c, new[] { f0, f1 }, new[] { t0, t1 }, V(0f, 0f), FinMat, SpineMat, z - 0.02f, shade, group, 1f, 0.7f, 0f, 0f, front ? 61 : 62);
+            // Pliegue del codo
+            var across = V(-fa.y, fa.x);
+            c.Crease(new[] { Add(elbow, Add(Scale(fa, 0.8f), Scale(across, 1.8f))), Add(elbow, Add(Scale(fa, 0.2f), Scale(across, 0.2f))) }, 1, group, Skin);
+            if (front)
             {
-                // Jirón de manga
-                var axis = Sub(elbow, shoulder);
-                float len = Mathf.Max(0.01f, Mathf.Sqrt(axis.x * axis.x + axis.y * axis.y));
-                axis = Scale(axis, 1f / len);
-                var side = V(-axis.y, axis.x);
-                var end = Add(shoulder, Scale(axis, len * 0.48f));
-                var pts = new List<Vector2> { Add(shoulder, Add(Scale(side, 4.4f), Scale(axis, -2.8f))), Add(shoulder, Add(Scale(side, -4.4f), Scale(axis, -2.8f))) };
-                for (int i = 0; i <= 4; i++)
-                {
-                    float t = i / 4f;
-                    var e = Add(end, Scale(side, Mathf.Lerp(-4.2f, 4.2f, t)));
-                    float d = (i % 2 == 0 ? 3f : 0.4f) * (0.7f + 0.6f * PixelCanvas.Hash(i, 8, 21));
-                    pts.Add(Add(Add(e, Scale(axis, d)), V(-sway * 0.8f * (i % 2 == 0 ? 1f : 0f), 0f)));
-                }
-                c.Poly(pts.ToArray(), Shirt, z + 0.08f, 1.5f, shade, group);
+                // Percebes en el hombro y un alga enredada en el antebrazo
+                var ua = Sub(elbow, shoulder);
+                HombrePez.Percebes(c, Add(Mix(shoulder, elbow, 0.22f), Scale(V(-ua.y, ua.x), 0.12f)), 2, 0.9f, z + 0.06f, 27);
+                HombrePez.Alga(c, Mix(elbow, hand, 0.42f), 6f, sway * 1.4f, wave * 0.5f + 2.1f, z + 0.07f, 53);
             }
-            DrawClaw(c, hand, foreAngle - 90f + wrist, grip, palm, z + 0.1f, shade, group, skin);
+            DrawClaw(c, hand, foreAngle - 90f + wrist, grip, palm, z + 0.1f, shade, group);
         }
 
         /// <summary>Mano palmeada: palma, tres dedos con membrana y garras curvas.</summary>
-        void DrawClaw(ShadedCanvas c, Vector2 wristPt, float ang, float grip, float palm, float z, float shade, int group, PixelMaterial skin)
+        void DrawClaw(ShadedCanvas c, Vector2 wristPt, float ang, float grip, float palm, float z, float shade, int group)
         {
             var palmC = Add(wristPt, Dir(ang, 2.2f));
-            c.Ellipse(palmC, 3.3f, 2.6f, ang, skin, z, shade, group);
+            HombrePez.Relieve(c.Ellipse(palmC, 3.3f, 2.6f, ang, Skin, z, shade, group), LimbScales);
             float[] spread = { -28f, 0f, 26f };
             float[] len1 = { 4f, 5f, 4.2f };
             float curl = palm * (20f + 50f * grip);
@@ -586,81 +667,15 @@ namespace Abismo.EditorTools
                 var k0 = Add(palmC, Dir(fa, 2f));
                 var k1 = Add(k0, Dir(fa + curl * 0.35f, len1[i]));
                 var tip = Add(k1, Dir(fa + curl, 4.2f));
-                c.Capsule(k0, k1, 1.25f, 1.05f, skin, z + 0.02f, shade, group);
+                c.Capsule(k0, k1, 1.25f, 1.05f, Skin, z + 0.02f, shade, group);
                 c.Capsule(k1, tip, 1.05f, 0.3f, ClawMat, z + 0.03f, shade, group);
+                // Nudillo iluminado y cutícula oscura donde nace la uña
+                c.Dot(k0, 1, group, Skin);
+                c.Dot(Mix(k0, k1, 0.96f), -1, group, Skin);
                 web.Add(Mix(k0, k1, 0.92f));
             }
             web.Add(Add(palmC, Dir(ang + 90f, 2f)));
-            c.Poly(web.ToArray(), FinMat, z + 0.01f, 1f, shade, group);
-        }
-
-        void DrawHead(ShadedCanvas c, Vector2 hp, float hr, Pose p, PixelMaterial skin, PixelMaterial belly)
-        {
-            int gHead = c.NewGroup(), gJaw = c.NewGroup(), gMouth = c.NewGroup(), gEye = c.NewGroup(), gFar = c.NewGroup(), gGill = c.NewGroup();
-            const float k = HeadScale;
-            Vector2 H(float x, float y) => Add(hp, Rotate(V(x * k, y * k), V(0f, 0f), hr));
-            float jaw = p["jaw"];
-            float jawA = -jaw * 30f;
-            var hinge = V(0.5f, -1.8f);
-            Vector2 J(float x, float y)
-            {
-                var l = Add(hinge, Rotate(V(x, y), V(0f, 0f), jawA));
-                return Add(hp, Rotate(V(l.x * k, l.y * k), V(0f, 0f), hr));
-            }
-            float eye = p["eye"];
-            bool hot = eye > 0.45f, dull = eye < -0.25f;
-
-            // Ojo lejano: asoma por encima del cráneo
-            var eyeFar = H(5.4f, 8.2f);
-            c.Ellipse(eyeFar, 3f * k, 2.8f * k, hr, SkinDark, 7.4f, -0.1f, gFar);
-            c.Ellipse(Add(eyeFar, V(0.5f, 0.6f)), 1.8f * k, 1.6f * k, 0f, dull ? EyeDull : hot ? EyeMid : EyeRing, 7.45f, 0f, gFar);
-
-            // Fauces: interior oscuro y mandíbula inferior pálida (prognata)
-            c.Ellipse(H(7f, -2.6f), 5.6f * k, (1.2f + jaw * 3.2f) * k, hr - jaw * 14f, MouthIn, 7.8f, 0f, gMouth);
-            c.Poly(new[] { J(-1.5f, 1.2f), J(6f, 0.8f), J(12.4f, 0.6f), J(13.8f, -0.6f), J(12.6f, -2.6f), J(6.5f, -4.4f), J(0f, -4.1f), J(-2.6f, -2f) },
-                   belly, 7.9f, 2f, 0f, gJaw);
-
-            // Cráneo y hocico
-            c.Ellipse(H(4.2f, 2.6f), 7.6f * k, 6.1f * k, hr - 8f, skin, 8f, 0f, gHead);
-            c.Ellipse(H(10.2f, 0.6f), 4.6f * k, 3.3f * k, hr - 6f, skin, 8.02f, 0f, gHead);
-            // Comisura: línea de la boca, ancha y caída
-            if (jaw < 0.3f)
-                c.Strand(Bezier(H(1f, -2.6f), H(6f, -1.2f), H(13.2f, -0.9f), 5), 0.55f, 0.45f, MouthIn, 8.05f, 0f, gMouth);
-            else
-                c.Capsule(H(0.6f, -2.8f), H(2.4f, -2f), 0.6f, 0.5f, MouthIn, 8.05f, 0f, gMouth);
-
-            // Branquias: tres hendiduras rojizas tras la mandíbula que se abren al respirar
-            float gill = p["gill"];
-            for (int i = 0; i < 3; i++)
-            {
-                var a = H(0.6f - i * 1.9f, -4f + i * 0.4f);
-                var m = H(1.6f - i * 1.9f, -1f);
-                var b = H(-0.2f - i * 1.9f, 2f - i * 0.5f);
-                c.Strand(Bezier(a, m, b, 4), 0.35f + gill * 0.4f, 0.3f + gill * 0.25f, GillMat, 8.15f, 0f, gGill);
-            }
-
-            // Dientes de aguja cuando abre la boca
-            if (jaw > 0.3f)
-            {
-                var tooth = PixelCanvas.Hex("d6d0b0");
-                for (int t = 0; t < 4; t++)
-                {
-                    var t0 = H(6f + t * 1.8f, -1.9f);
-                    c.Decal(t0.x, t0.y, tooth);
-                    var t1 = J(5.4f + t * 1.9f, 1f);
-                    c.Decal(t1.x, t1.y, tooth);
-                }
-            }
-
-            // Ojo saltón
-            var E = H(8f, 5.6f);
-            float er = 2.9f * k + 0.5f * Mathf.Max(0f, eye);
-            c.Ellipse(E, er + 1.1f, er + 0.9f, hr, SkinDark, 8.2f, 0f, gEye);
-            c.Ellipse(E, er, er - 0.1f, 0f, dull ? EyeDull : hot ? EyeRingHot : EyeRing, 8.3f, 0f, gEye);
-            c.Ellipse(Add(E, V(0.2f, 0.3f)), er - 0.9f, er - 1f, 0f, dull ? EyeDullMid : hot ? EyeMidHot : EyeMid, 8.31f, 0f, gEye);
-            if (!dull) c.Ellipse(Add(E, V(-0.6f, 1f)), 1f + 0.4f * Mathf.Max(0f, eye), 0.8f, 0f, hot ? EyeCoreHot : EyeCore, 8.32f, 0f, gEye);
-            float pr = dull ? 1.6f : 1.2f - 0.35f * Mathf.Max(0f, eye);
-            c.Ellipse(Add(E, Rotate(V(1f, -0.2f), V(0f, 0f), hr)), pr, pr, 0f, Pupil, 8.4f, 0f, gEye);
+            c.Poly(web.ToArray(), FinMat, z + 0.01f, 1f, shade, group).WithDetail(HombrePez.Membrana(palmC, Mix(web[2], web[3], 0.5f), 5f));
         }
 
         /// <summary>Aleta dorsal: espinas óseas unidas por membrana, con ondulación desfasada (movimiento secundario).</summary>
@@ -676,17 +691,7 @@ namespace Abismo.EditorTools
                 float a = ta + 90f + sweep + 6f * Mathf.Sin(wave - i * 0.9f);
                 tips[i] = Add(bases[i], Dir(a, lens[i] * (1f + 0.15f * flare)));
             }
-            var poly = new List<Vector2> { bases[0] };
-            for (int i = 0; i < n; i++)
-            {
-                poly.Add(tips[i]);
-                if (i < n - 1) poly.Add(Mix(Mix(bases[i], tips[i], 0.55f), Mix(bases[i + 1], tips[i + 1], 0.55f), 0.5f));
-            }
-            poly.Add(bases[n - 1]);
-            for (int i = n - 1; i >= 1; i--) poly.Add(Sub(bases[i], Scale(back, 2.5f)));
-            c.Poly(poly.ToArray(), FinMat, 2f, 1.6f, 0f, group, -0.2f, 0.3f);
-            for (int i = 0; i < n; i++)
-                c.Capsule(Sub(bases[i], Scale(back, 1.5f)), tips[i], 1.05f, 0.4f, SpineMat, 2.1f, 0f, group);
+            HombrePez.Aleta(c, bases, tips, back, FinMat, SpineMat, 2f, 0f, group, 1.6f, 1.05f, -0.2f, 0.3f, 7);
         }
 
         /// <summary>Estela de tres líneas (una por garra): fina en la cola, gruesa en la punta.</summary>
@@ -734,6 +739,426 @@ namespace Abismo.EditorTools
                 float d = (i % 2 == 1 ? depth : 0.3f) * (0.6f + 0.8f * PixelCanvas.Hash(i, seed, 3));
                 yield return Add(p, V(-sway * d * 0.5f, -d));
             }
+        }
+    }
+
+    /// <summary>
+    /// Detalle "a mano" compartido por los hombres-pez (el Profundo y el Guardián de la Concha): escamas imbricadas en
+    /// racimos, pliegues, verrugas, aletas de membrana translúcida con venas, ojo saltón con reflejo, branquias con
+    /// laminillas, dientes de aguja, percebes y algas. Todo va en coordenadas LOCALES de cada pieza (relieve y dibujo
+    /// del motor v4), así viaja pegado al cuerpo al animar y también llega al normal map de las luces 2D.
+    /// </summary>
+    internal static class HombrePez
+    {
+        // ------------------------------------------------------------------
+        // Relieves de piel
+        // ------------------------------------------------------------------
+
+        /// <summary>Relieve (altura en px) + dibujo (desplazamiento de banda) en coordenadas locales de una pieza.</summary>
+        public interface IRelieve
+        {
+            float Altura(float u, float v);
+            int Dibujo(float u, float v);
+        }
+
+        /// <summary>Aplica un relieve a una pieza conservando su marco local automático.</summary>
+        public static ShadedCanvas.Shape Relieve(ShadedCanvas.Shape s, IRelieve r, float strength = 0.4f)
+        {
+            s.Bump = r.Altura;
+            s.BumpStrength = strength;
+            s.Detail = r.Dibujo;
+            return s;
+        }
+
+        /// <summary>Aplica un relieve con un marco compartido (varias piezas del tronco con el mismo dibujo continuo).</summary>
+        public static ShadedCanvas.Shape Relieve(ShadedCanvas.Shape s, IRelieve r, Vector2 origin, float angle, float strength = 0.4f) =>
+            Relieve(s.Frame(origin, angle), r, strength);
+
+        /// <summary>
+        /// Escamas imbricadas: filas al tresbolillo cuyo tamaño crece del vientre (v0) al lomo (v1); las de delante
+        /// tapan a las de detrás, así cada escama enseña su media luna con el borde libre hacia la cola. Aparecen en
+        /// racimos (manchas de ruido por escama entera) y, entre ellos, piel lisa con verrugas y motas.
+        /// u = a lo largo (hacia la cabeza, salvo <see cref="HaciaU"/>), v = a través (hacia el lomo).
+        /// </summary>
+        public sealed class Escamas : IRelieve
+        {
+            /// <summary>Alto de escama (px) en el lomo y en el vientre; el ancho es 0,85 veces el alto.</summary>
+            public float Grande = 6f, Fina = 4f, V0 = -4f, V1 = 6f;
+            public float Racimo = 0.55f, LomoDesde = 99f, VMin = -99f, UMin = -99f, UMax = 99f;
+            public float Hondo = 1f, Verrugas = 0.22f, Motas = 0.84f;
+            /// <summary>true: el borde libre de cada escama mira hacia +u (extremidades: hacia la mano o el pie).</summary>
+            public bool HaciaU;
+            public int Semilla = 1;
+
+            /// <summary>
+            /// Teselas en columnas a lo largo del cuerpo (cada columna desplazada media escama): en cada tesela, el arco
+            /// del borde libre (media elipse que se abomba hacia la cola). f &lt; 1 dentro de la escama, 1 en el canto.
+            /// </summary>
+            bool Buscar(float u, float v, out float f, out float px, out float db)
+            {
+                float s = HaciaU ? u : -u;
+                float h = v >= V1 ? Grande : v >= V0 ? (Grande + Fina) * 0.5f : Fina;
+                float w = h * 0.85f;
+                int col = Mathf.FloorToInt(s / w);
+                float a = s - col * w;
+                float off = (col & 1) == 0 ? 0f : h * 0.5f;
+                int row = Mathf.FloorToInt((v + off) / h);
+                db = (v + off - row * h) / h * 2f - 1f;           // −1..1 a través de la escama
+                // El arco corta el borde de la tesela en ángulo (no tangente): las escamas de una columna se tocan en
+                // picos y forman el festón ")))" típico.
+                float we = w * 0.95f, q = db * 0.8f;
+                float k = a / we;
+                f = Mathf.Sqrt(k * k + q * q);
+                // px = píxeles por unidad de f (gradiente), para que el canto mida 1 px en toda la curva.
+                float gk = k / we, gb = q * 0.8f * 2f / h;
+                px = Mathf.Max(0.01f, f) / Mathf.Max(0.05f, Mathf.Sqrt(gk * gk + gb * gb));
+                float sc = (col + 0.5f) * w, bc = row * h - off + h * 0.5f;
+                float uc = HaciaU ? sc : -sc;
+                if (uc < UMin || uc > UMax || bc < VMin) return false;
+                if (bc >= LomoDesde) return true;
+                return PixelCanvas.ValueNoise(col * w / 6.5f, bc / 4.5f, 0, Semilla) > 1f - Racimo;
+            }
+
+            float Verruga(float u, float v)
+            {
+                const float cs = 4.5f;
+                int ci = Mathf.FloorToInt(u / cs), cj = Mathf.FloorToInt(v / cs);
+                if (PixelCanvas.Hash(ci, cj, Semilla + 7) > Verrugas) return 0f;
+                float cx = (ci + 0.3f + 0.4f * PixelCanvas.Hash(ci, cj, Semilla + 8)) * cs;
+                float cy = (cj + 0.3f + 0.4f * PixelCanvas.Hash(ci, cj, Semilla + 9)) * cs;
+                float rr = 0.9f + 0.5f * PixelCanvas.Hash(ci, cj, Semilla + 10);
+                float d2 = ((u - cx) * (u - cx) + (v - cy) * (v - cy)) / (rr * rr);
+                return d2 < 1f ? 0.9f * Mathf.Sqrt(1f - d2) : 0f;
+            }
+
+            public float Altura(float u, float v)
+            {
+                // Cada escama es una placa apenas abombada: el volumen lo da el cuerpo; el dibujo, el canto y la luz.
+                if (Buscar(u, v, out float f, out _, out _)) return f < 1f ? Hondo * 0.6f * (1f - f) : 0f;
+                return Verruga(u, v);
+            }
+
+            public int Dibujo(float u, float v)
+            {
+                if (Buscar(u, v, out float f, out float px, out float db))
+                {
+                    float d = (f - 1f) * px;
+                    // Canto: línea un tono más oscura (la sombra que deja sobre la siguiente)...
+                    if (d > -0.55f && d < 0.55f) return -1;
+                    // (Sin rayas de luz dentro: a ×1 se leerían como lluvia; el volumen lo pone la luz del cuerpo.)
+                    return 0;
+                }
+                return PixelCanvas.ValueNoise(u / 2.6f, v / 2.6f, 0, Semilla + 3) > Motas ? -1 : 0;
+            }
+        }
+
+        /// <summary>Pliegues paralelos (placas del vientre, garganta de sapo): surco oscuro y placa abombada.</summary>
+        public sealed class Pliegues : IRelieve
+        {
+            public float Periodo = 2.4f, Ondula = 0.5f, Alto = 0.7f;
+            public int Semilla;
+
+            float W(float u, float v) => u + Mathf.Sin(v * 0.55f + Semilla) * Ondula;
+
+            public float Altura(float u, float v)
+            {
+                float t = Mathf.Repeat(W(u, v), Periodo) / Periodo;
+                return Mathf.Sin(t * Mathf.PI) * Alto;
+            }
+
+            public int Dibujo(float u, float v) => Mathf.Repeat(W(u, v), Periodo) < 0.75f ? -1 : 0;
+        }
+
+        static readonly Pliegues JawFolds = new Pliegues { Periodo = 2f, Ondula = 0.3f, Alto = 0.6f, Semilla = 4 };
+
+        /// <summary>Cuerda torcida: estrías en diagonal (dibujo para el marco de una cápsula).</summary>
+        public static readonly System.Func<float, float, int> Torcida = (u, v) => Mathf.Repeat(u + v * 0.9f, 2.2f) < 0.9f ? -1 : 0;
+
+        /// <summary>Membrana palmeada (manos y pies): oscura en la raíz y fina y clara hacia el borde (coordenadas del lienzo).</summary>
+        public static System.Func<float, float, int> Membrana(Vector2 root, Vector2 edge, float len) => (x, y) =>
+        {
+            float d = Mathf.Sqrt((x - root.x) * (x - root.x) + (y - root.y) * (y - root.y)) / Mathf.Max(0.5f, len);
+            return d > 0.78f ? 1 : d < 0.3f ? -1 : 0;
+        };
+
+        // ------------------------------------------------------------------
+        // Materiales compartidos
+        // ------------------------------------------------------------------
+
+        static readonly PixelMaterial EyeRing = PixelMaterial.Glow("5e5a1c");
+        static readonly PixelMaterial EyeMid = PixelMaterial.Glow("a69e38");
+        static readonly PixelMaterial EyeCore = PixelMaterial.Glow("ddd578");
+        static readonly PixelMaterial EyeRingHot = PixelMaterial.Glow("948824");
+        static readonly PixelMaterial EyeMidHot = PixelMaterial.Glow("e4d846");
+        static readonly PixelMaterial EyeCoreHot = PixelMaterial.Glow("fffbcc");
+        static readonly PixelMaterial EyeDull = PixelMaterial.Glow("3e3c26");
+        static readonly PixelMaterial EyeDullMid = PixelMaterial.Glow("5e5a36");
+        static readonly PixelMaterial Pupil = PixelMaterial.Glow("120f0c");
+        static readonly PixelMaterial EyeGlint = PixelMaterial.Glow("fffdf0");
+        static readonly PixelMaterial EyeGlintDim = PixelMaterial.Glow("efe7a8");
+        static readonly PixelMaterial GillMat = new PixelMaterial(Ramp.Make("62262f", 4, 0.06f, 0.42f, 1.7f)) { Ambient = 0.3f, Rim = 0.1f, Dither = 0f, Outline = false };
+        static readonly PixelMaterial ToothMat = new PixelMaterial(Ramp.Make("cfc8a6", 3, 0.06f, 0.55f, 1.22f)) { Ambient = 0.45f, Outline = false, Dither = 0f, Gloss = 0.2f };
+        static readonly PixelMaterial BarnacleMat = new PixelMaterial(Ramp.Make("aca48c", 4, 0.08f, 0.38f, 1.32f)) { Ambient = 0.3f, Rim = 0.5f, Dither = 0f };
+        static readonly PixelMaterial BarnacleHole = new PixelMaterial(Ramp.Make("2b2533", 3, 0.05f, 0.6f, 1.4f)) { Ambient = 0.55f, Outline = false, Dither = 0f };
+        public static readonly PixelMaterial AlgaMat = new PixelMaterial(Ramp.Make("55672c", 4, 0.1f, 0.36f, 1.55f)) { Ambient = 0.28f, Rim = 0.7f, Dither = 0f };
+
+        /// <summary>Laminillas de las branquias: rayas claras y oscuras alternas a lo largo de la hendidura.</summary>
+        static readonly System.Func<float, float, int> Laminillas = (u, v) => Mathf.Repeat(u, 1.6f) < 0.8f ? 1 : -1;
+        /// <summary>Juntas de los radios de una aleta (los radios de los peces son segmentados).</summary>
+        static readonly System.Func<float, float, int> Segmentos = (u, v) => u > 1.6f && Mathf.Repeat(u, 2.4f) < 0.8f ? -1 : 0;
+
+        // ------------------------------------------------------------------
+        // Piezas
+        // ------------------------------------------------------------------
+
+        /// <summary>Exactamente un píxel (en el centro del píxel que contiene <paramref name="p"/>), con su Z (respeta la oclusión).</summary>
+        public static void Punto(ShadedCanvas c, Vector2 p, PixelMaterial m, float z, int group)
+        {
+            float cx = Mathf.Floor(p.x + c.OriginX) + 0.5f - c.OriginX, cy = Mathf.Floor(p.y + c.OriginY) + 0.5f - c.OriginY;
+            c.Ellipse(V(cx, cy), 0.55f, 0.55f, 0f, m, z, 0f, group);
+        }
+
+        /// <summary>Racimo de percebes: conos pálidos con el agujero oscuro y el canto de arriba iluminado.</summary>
+        public static void Percebes(ShadedCanvas c, Vector2 at, int count, float size, float z, int seed)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                float ang = PixelCanvas.Hash(i, seed, 1) * 360f;
+                float dist = i == 0 ? 0f : size * (1.3f + PixelCanvas.Hash(i, seed, 2) * 0.9f);
+                var pos = Add(at, Dir(ang, dist));
+                float r = size * (0.85f + PixelCanvas.Hash(i, seed, 3) * 0.5f);
+                int g = c.NewGroup();
+                c.Ellipse(pos, r, r * 0.9f, 0f, BarnacleMat, z + i * 0.002f, 0f, g);
+                c.Ellipse(Add(pos, V(0.2f, 0.4f)), Mathf.Max(0.55f, r * 0.42f), Mathf.Max(0.5f, r * 0.32f), 0f, BarnacleHole, z + 0.001f + i * 0.002f, 0f, g);
+                if (r > 1.15f) c.Dot(Add(pos, V(0.6f, -0.5f * r)), -1, g, BarnacleMat);
+            }
+        }
+
+        /// <summary>Alga colgante: tallo que se estrecha y ondula con frondes alternas (movimiento secundario).</summary>
+        public static void Alga(ShadedCanvas c, Vector2 root, float len, float sway, float phase, float z, int seed)
+        {
+            int g = c.NewGroup();
+            const int n = 6;
+            var pts = new Vector2[n];
+            for (int i = 0; i < n; i++)
+            {
+                float t = i / (float)(n - 1);
+                float wig = Mathf.Sin(phase + t * 4.2f + seed) * 0.9f * t;
+                var q = Add(root, V(-sway * 2.2f * t * t + wig, -len * t));
+                pts[i] = V(q.x, Mathf.Max(q.y, 0.8f));
+            }
+            for (int i = 0; i < n - 1; i++)
+            {
+                float t0 = i / (float)(n - 1), t1 = (i + 1) / (float)(n - 1);
+                c.Capsule(pts[i], pts[i + 1], Mathf.Lerp(0.8f, 0.45f, t0), Mathf.Lerp(0.8f, 0.45f, t1), AlgaMat, z, 0f, g);
+            }
+            for (int i = 1; i < n - 1; i += 2)
+            {
+                float side = (i / 2) % 2 == 0 ? 1f : -1f;
+                var leaf = Add(pts[i], V(side * 1.2f, -0.9f));
+                c.Ellipse(V(leaf.x, Mathf.Max(leaf.y, 1f)), 1.3f, 0.65f, side * -40f, AlgaMat, z - 0.005f, 0.06f, g);
+            }
+        }
+
+        /// <summary>Abanico de radios: dónde cae un punto entre dos radios (para las venas de la membrana).</summary>
+        sealed class Abanico
+        {
+            readonly Vector2[] b, d;
+            readonly float[] len;
+            readonly int n;
+
+            public Abanico(Vector2[] bases, Vector2[] tips)
+            {
+                n = bases.Length;
+                b = bases;
+                d = new Vector2[n];
+                len = new float[n];
+                for (int i = 0; i < n; i++)
+                {
+                    float ex = tips[i].x - bases[i].x, ey = tips[i].y - bases[i].y;
+                    float l = Mathf.Max(0.01f, Mathf.Sqrt(ex * ex + ey * ey));
+                    d[i] = V(ex / l, ey / l);
+                    len[i] = l;
+                }
+            }
+
+            /// <summary>Raíz en sombra, una vena central entre cada par de radios (que se bifurca hacia el borde) y borde translúcido.</summary>
+            public int Membrana(float x, float y)
+            {
+                float prevD = 0f, prevA = 0f;
+                for (int i = 0; i < n; i++)
+                {
+                    float px = x - b[i].x, py = y - b[i].y;
+                    float dd = d[i].x * py - d[i].y * px;
+                    float al = (d[i].x * px + d[i].y * py) / len[i];
+                    if (i > 0 && (dd > 0f) != (prevD > 0f))
+                    {
+                        float gap = Mathf.Abs(prevD) + Mathf.Abs(dd);
+                        float w = Mathf.Abs(prevD) / Mathf.Max(0.01f, gap);
+                        float a = Mathf.Lerp(prevA, al, w);
+                        if (a < 0.14f) return -1;
+                        if (gap > 3.2f)
+                        {
+                            float fork = a > 0.55f ? (a - 0.55f) * 0.55f : 0f;
+                            if (Mathf.Abs(w - 0.5f + fork) * gap < 0.5f || (fork > 0f && Mathf.Abs(w - 0.5f - fork) * gap < 0.5f)) return -1;
+                        }
+                        return a > 0.7f ? 1 : 0;
+                    }
+                    prevD = dd;
+                    prevA = al;
+                }
+                return 0;
+            }
+        }
+
+        /// <summary>
+        /// Aleta: membrana translúcida (más clara hacia el borde, venas que se bifurcan, escotaduras rasgadas) tendida
+        /// entre radios óseos segmentados. <paramref name="back"/> ≠ 0 alarga la raíz por dentro del cuerpo.
+        /// </summary>
+        public static void Aleta(ShadedCanvas c, Vector2[] bases, Vector2[] tips, Vector2 back, PixelMaterial membrana, PixelMaterial espina,
+                                 float z, float shade, int group, float bevel, float spineR, float tiltX, float tiltY, int seed)
+        {
+            int n = bases.Length;
+            var poly = new List<Vector2> { bases[0] };
+            for (int i = 0; i < n; i++)
+            {
+                poly.Add(tips[i]);
+                if (i >= n - 1) continue;
+                Vector2 M(float t, float s) => Mix(Mix(bases[i], tips[i], t), Mix(bases[i + 1], tips[i + 1], t), s);
+                if (n > 2 && PixelCanvas.Hash(i, seed, 5) > 0.55f)
+                {
+                    // Desgarro en V asimétrico
+                    poly.Add(M(0.66f, 0.28f));
+                    poly.Add(M(0.36f, 0.56f));
+                    poly.Add(M(0.6f, 0.78f));
+                }
+                else poly.Add(M(0.55f, 0.5f));
+            }
+            poly.Add(bases[n - 1]);
+            bool deep = back.x != 0f || back.y != 0f;
+            if (deep)
+                for (int i = n - 1; i >= 1; i--) poly.Add(Sub(bases[i], Scale(back, 2.5f)));
+            var fan = new Abanico(bases, tips);
+            c.Poly(poly.ToArray(), membrana, z, bevel, shade, group, tiltX, tiltY).WithDetail(fan.Membrana);
+            for (int i = 0; i < n; i++)
+            {
+                var b0 = deep ? Sub(bases[i], Scale(back, 1.5f)) : bases[i];
+                c.Capsule(b0, tips[i], spineR, 0.4f, espina, z + 0.01f, shade, group).WithDetail(Segmentos);
+            }
+        }
+
+        /// <summary>Ojo saltón: cuenca oscura, iris amarillo con luz interior abajo, pupila y reflejo húmedo de 1 px.</summary>
+        public static void Ojo(ShadedCanvas c, Vector2 E, float er, float hr, float eye, PixelMaterial socket, float z, int g, float coreGrow)
+        {
+            bool hot = eye > 0.45f, dull = eye < -0.25f;
+            float e = Mathf.Max(0f, eye);
+            c.Ellipse(E, er + 1.1f, er + 0.9f, hr, socket, z, 0f, g);
+            c.Ridge(new[] { Add(E, Dir(hr + 150f, er + 1.4f)), Add(E, Dir(hr + 95f, er + 1.2f)), Add(E, Dir(hr + 40f, er + 1.3f)) }, 1, g, socket);
+            c.Ellipse(E, er, er - 0.1f, 0f, dull ? EyeDull : hot ? EyeRingHot : EyeRing, z + 0.1f, 0f, g);
+            c.Ellipse(Add(E, V(0.2f, 0.3f)), er - 0.9f, er - 1f, 0f, dull ? EyeDullMid : hot ? EyeMidHot : EyeMid, z + 0.11f, 0f, g);
+            // Luz interior: el iris se enciende abajo, como un farol tras un cristal empañado.
+            if (!dull) c.Ellipse(Add(E, Rotate(V(0.4f, -0.9f), V(0f, 0f), hr)), 1.1f + coreGrow * e, 0.8f + 0.3f * e, hr, hot ? EyeCoreHot : EyeCore, z + 0.12f, 0f, g);
+            float pr = dull ? 1.6f : 1.2f - 0.35f * e;
+            var pupil = Add(E, Rotate(V(1f, -0.2f), V(0f, 0f), hr));
+            c.Ellipse(pupil, pr, pr, 0f, Pupil, z + 0.2f, 0f, g);
+            // Reflejos: uno vivo arriba (la luz de la escena en el ojo mojado) y otro tenue abajo.
+            if (!dull)
+            {
+                Punto(c, Add(E, Rotate(V(-0.6f, 1.3f), V(0f, 0f), hr)), EyeGlint, z + 0.3f, g);
+                Punto(c, Add(pupil, Rotate(V(0.9f, -1.1f), V(0f, 0f), hr)), EyeGlintDim, z + 0.3f, g);
+            }
+        }
+
+        /// <summary>Tres hendiduras branquiales con laminillas rojas y el borde del opérculo recogiendo la luz.</summary>
+        public static void Branquias(ShadedCanvas c, System.Func<float, float, Vector2> H, float gill, float z, int g, int gHead)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                var pts = Bezier(H(0.6f - i * 1.9f, -4f + i * 0.4f), H(1.6f - i * 1.9f, -1f), H(-0.2f - i * 1.9f, 2f - i * 0.5f), 4);
+                float r0 = 0.35f + gill * 0.4f, r1 = 0.3f + gill * 0.25f;
+                for (int s = 0; s < pts.Length - 1; s++)
+                {
+                    float ra = Mathf.Lerp(r0, r1, s / 3f), rb = Mathf.Lerp(r0, r1, (s + 1) / 3f);
+                    c.Capsule(pts[s], pts[s + 1], ra, rb, GillMat, z, 0f, g).WithDetail(Laminillas);
+                }
+                c.Ridge(Bezier(H(1.5f - i * 1.9f, -3.8f + i * 0.4f), H(2.7f - i * 1.9f, -1f), H(0.9f - i * 1.9f, 1.9f - i * 0.5f), 4), 1, gHead);
+            }
+        }
+
+        /// <summary>Dientes de aguja: dos filas alternas (largos y cortos) con la boca abierta; colmillos que asoman si está cerrada.</summary>
+        public static void Dientes(ShadedCanvas c, System.Func<float, float, Vector2> H, System.Func<float, float, Vector2> J, float jaw, float z, int g)
+        {
+            if (jaw > 0.3f)
+            {
+                for (int t = 0; t < 6; t++)
+                {
+                    float l = t % 2 == 0 ? 1.8f : 1.1f;
+                    c.Capsule(H(5.4f + t * 1.4f, -2.1f), H(5.6f + t * 1.4f, -2.1f - l), 0.5f, 0.2f, ToothMat, z, 0f, g);
+                    c.Capsule(J(5f + t * 1.45f, 0.6f), J(5.1f + t * 1.45f, 0.6f + l * 0.9f), 0.5f, 0.2f, ToothMat, z, 0f, g);
+                }
+            }
+            else
+            {
+                c.Capsule(J(10.8f, 0.3f), J(11.1f, 2f), 0.5f, 0.25f, ToothMat, z + 0.01f, 0f, g);
+                c.Capsule(H(4.6f, -2.1f), H(4.8f, -3.4f), 0.45f, 0.2f, ToothMat, z + 0.01f, 0f, g);
+            }
+        }
+
+        /// <summary>
+        /// Cabeza de pez: cráneo con escamitas y verrugas, hocico liso con narina y poros sensoriales, mandíbula prognata
+        /// con pliegues y labio claro, fauces con dientes, branquias y ojo saltón (más el ojo lejano asomando).
+        /// Devuelve el grupo del cráneo (para marcas encima).
+        /// </summary>
+        public static int Cabeza(ShadedCanvas c, Vector2 hp, float hr, float k, float jaw, float gill, float eye,
+                                 PixelMaterial skin, PixelMaterial belly, PixelMaterial skinDark, PixelMaterial mouthIn,
+                                 Escamas escamas, bool veterano, float eyeGrow)
+        {
+            int gHead = c.NewGroup(), gJaw = c.NewGroup(), gMouth = c.NewGroup(), gEye = c.NewGroup(), gFar = c.NewGroup(), gGill = c.NewGroup(), gTeeth = c.NewGroup();
+            Vector2 H(float x, float y) => Add(hp, Rotate(V(x * k, y * k), V(0f, 0f), hr));
+            float jawA = -jaw * 30f;
+            var hinge = V(0.5f, -1.8f);
+            Vector2 J(float x, float y)
+            {
+                var l = Add(hinge, Rotate(V(x, y), V(0f, 0f), jawA));
+                return Add(hp, Rotate(V(l.x * k, l.y * k), V(0f, 0f), hr));
+            }
+            bool hot = eye > 0.45f, dull = eye < -0.25f;
+
+            // Ojo lejano: asoma por encima del cráneo
+            var eyeFar = H(5.4f, 8.2f);
+            c.Ellipse(eyeFar, 3f * k, 2.8f * k, hr, skinDark, 7.4f, -0.1f, gFar);
+            c.Ellipse(Add(eyeFar, V(0.5f, 0.6f)), 1.8f * k, 1.6f * k, 0f, dull ? EyeDull : hot ? EyeMid : EyeRing, 7.45f, 0f, gFar);
+
+            // Fauces: interior oscuro y mandíbula inferior pálida (prognata) con pliegues de la garganta y labio claro
+            c.Ellipse(H(7f, -2.6f), 5.6f * k, (1.2f + jaw * 3.2f) * k, hr - jaw * 14f, mouthIn, 7.8f, 0f, gMouth);
+            float d1 = veterano ? -2.8f : -2.6f, d2 = veterano ? -4.8f : -4.4f, d3 = veterano ? -4.5f : -4.1f;
+            Relieve(c.Poly(new[] { J(-1.5f, 1.2f), J(6f, 0.8f), J(12.4f, 0.6f), J(13.8f, -0.6f), J(12.6f, d1), J(6.5f, d2), J(0f, d3), J(-2.6f, -2f) },
+                           belly, 7.9f, 2f, 0f, gJaw), JawFolds, hp, hr + jawA + 90f, 0.8f);
+            c.Ridge(new[] { J(-0.4f, 0.6f), J(6f, 0.2f), J(12.2f, 0f) }, 1, gJaw);
+
+            // Cráneo y hocico (escamitas arriba, piel lisa con verrugas en la mejilla)
+            Relieve(c.Ellipse(H(4.2f, 2.6f), 7.6f * k, 6.1f * k, hr - 8f, skin, 8f, 0f, gHead), escamas, hp, hr);
+            Relieve(c.Ellipse(H(10.2f, 0.6f), 4.6f * k, 3.3f * k, hr - 6f, skin, 8.02f, 0f, gHead), escamas, hp, hr);
+            // Narina y poros sensoriales en hilera bajo el ojo
+            c.Dot(H(12.7f, 1.5f), -2, gHead);
+            for (int i = 0; i < 4; i++) c.Dot(H(2.2f + i * 1.8f, 0.9f - (i == 1 || i == 2 ? 0.3f : 0f)), -2, gHead);
+            // Comisura: línea de la boca, ancha y caída, con el labio de arriba iluminado
+            if (jaw < 0.3f)
+            {
+                c.Strand(Bezier(H(1f, -2.6f), H(6f, -1.2f), H(13.2f, -0.9f), 5), 0.55f, 0.45f, mouthIn, 8.05f, 0f, gMouth);
+                c.Ridge(Bezier(H(3f, -1.1f), H(7f, -0.2f), H(12.4f, 0f), 4), 1, gHead);
+            }
+            else
+                c.Capsule(H(0.6f, -2.8f), H(2.4f, -2f), 0.6f, 0.5f, mouthIn, 8.05f, 0f, gMouth);
+
+            Branquias(c, H, gill, 8.15f, gGill, gHead);
+            Dientes(c, H, J, jaw, 8.06f, gTeeth);
+
+            // Ojo saltón
+            var E = H(8f, 5.6f);
+            float er = 2.9f * k + eyeGrow * Mathf.Max(0f, eye);
+            Ojo(c, E, er, hr, eye, skinDark, 8.2f, gEye, veterano ? 0.5f : 0.4f);
+            return gHead;
         }
     }
 }
