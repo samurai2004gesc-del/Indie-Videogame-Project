@@ -192,6 +192,76 @@ namespace Abismo.EditorTools
         /// '.' es transparente. La primera fila del texto es la de ARRIBA.
         /// Si <paramref name="padding"/> es true se deja 1 píxel libre alrededor para el contorno.
         /// </summary>
+        /// <summary>
+        /// Lee un PNG de 8 bits por canal (RGB o RGBA, sin entrelazar), como los que deja Tools/ExtraerHoja.
+        /// Sin dependencias de Unity: sirve igual en el editor que en las herramientas de vista previa.
+        /// </summary>
+        public static PixelCanvas LoadPng(string path)
+        {
+            byte[] data = System.IO.File.ReadAllBytes(path);
+            int pos = 8, width = 0, height = 0, colorType = 0;
+            var idat = new System.IO.MemoryStream();
+            while (pos + 8 <= data.Length)
+            {
+                int length = (data[pos] << 24) | (data[pos + 1] << 16) | (data[pos + 2] << 8) | data[pos + 3];
+                string type = System.Text.Encoding.ASCII.GetString(data, pos + 4, 4);
+                int body = pos + 8;
+                if (type == "IHDR")
+                {
+                    width = (data[body] << 24) | (data[body + 1] << 16) | (data[body + 2] << 8) | data[body + 3];
+                    height = (data[body + 4] << 24) | (data[body + 5] << 16) | (data[body + 6] << 8) | data[body + 7];
+                    int bitDepth = data[body + 8];
+                    colorType = data[body + 9];
+                    if (bitDepth != 8 || (colorType != 2 && colorType != 6) || data[body + 12] != 0)
+                        throw new System.Exception($"PNG no admitido ({path}): usa RGB/RGBA de 8 bits sin entrelazar.");
+                }
+                else if (type == "IDAT") idat.Write(data, body, length);
+                else if (type == "IEND") break;
+                pos = body + length + 4; // + CRC
+            }
+            int bpp = colorType == 6 ? 4 : 3, stride = width * bpp;
+            var raw = new byte[(stride + 1) * height];
+            idat.Position = 2; // cabecera zlib
+            using (var inflate = new System.IO.Compression.DeflateStream(idat, System.IO.Compression.CompressionMode.Decompress))
+            {
+                int read = 0;
+                while (read < raw.Length)
+                {
+                    int n = inflate.Read(raw, read, raw.Length - read);
+                    if (n <= 0) break;
+                    read += n;
+                }
+            }
+            var canvas = new PixelCanvas(width, height);
+            var prev = new byte[stride];
+            var line = new byte[stride];
+            for (int row = 0; row < height; row++)
+            {
+                int filter = raw[row * (stride + 1)];
+                System.Array.Copy(raw, row * (stride + 1) + 1, line, 0, stride);
+                for (int i = 0; i < stride; i++)
+                {
+                    int a = i >= bpp ? line[i - bpp] : 0, b = prev[i], c = i >= bpp ? prev[i - bpp] : 0;
+                    int add = filter == 1 ? a : filter == 2 ? b : filter == 3 ? (a + b) / 2 : filter == 4 ? Paeth(a, b, c) : 0;
+                    line[i] = (byte)(line[i] + add);
+                }
+                int y = height - 1 - row; // la primera fila del PNG es la de arriba
+                for (int x = 0; x < width; x++)
+                {
+                    int o = x * bpp;
+                    canvas.Pixels[y * width + x] = new Color32(line[o], line[o + 1], line[o + 2], bpp == 4 ? line[o + 3] : (byte)255);
+                }
+                var t = prev; prev = line; line = t;
+            }
+            return canvas;
+        }
+
+        static int Paeth(int a, int b, int c)
+        {
+            int p = a + b - c, pa = System.Math.Abs(p - a), pb = System.Math.Abs(p - b), pc = System.Math.Abs(p - c);
+            return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+        }
+
         public static PixelCanvas FromAscii(string art, Dictionary<char, Color32> palette, string glowChars = "", bool padding = true)
         {
             var rows = new List<string>();

@@ -254,7 +254,7 @@ namespace Abismo.EditorTools
             // Decorado y objetos.
             Progress("Pintando el decorado", 0.18f);
             var propPaths = new Dictionary<string, (string color, string glow)>();
-            foreach (var prop in PropArt.Statics().Concat(PropArt.Gameplay()).Concat(SceneryArt.All()))
+            foreach (var prop in PropArt.Statics().Concat(PropArt.Gameplay()).Concat(SceneryArt.All()).Concat(HojaArt.Decorado()))
             {
                 string path = baker.AddSprite("Decorado", prop.Name, prop.Color, prop.Normal, prop.Pivot01, prop.Border);
                 string glow = prop.Emission != null ? baker.AddSprite("Decorado", prop.Name + "_brillo", prop.Emission, null, prop.Pivot01) : null;
@@ -718,6 +718,21 @@ namespace Abismo.EditorTools
                         case 'I': PlaceProp(ctx, "idolo", feet, props, OrderPropsBack); break;
                         case 'L': PlaceProp(ctx, "candelabro", feet, props, OrderPropsBack); break;
                         case 'F': PlaceProp(ctx, "farol", feet, props, OrderPropsBack); break;
+                        // Piezas de la hoja conceptual (si está la carpeta ArteHoja).
+                        case 'E': PlaceSheetProp(ctx, SheetStatue(x), feet, props, OrderPropsBack - 1); break;
+                        case 'K': PlaceSheetProp(ctx, "h_farola", feet, props, OrderPropsBack); break;
+                        case 'Q': PlaceSheetProp(ctx, "h_puerta", feet, props, OrderPropsBack - 1); break;
+                        case 'X':
+                            var chest = PlaceSheetProp(ctx, "h_cofre", feet, props, OrderInteractables);
+                            if (chest != null)
+                            {
+                                var box = chest.AddComponent<BoxCollider2D>();
+                                box.isTrigger = true;
+                                box.size = new Vector2(2f, 1.8f);
+                                box.offset = new Vector2(0f, 0.9f);
+                                chest.AddComponent<TreasureChest>().Configure(ctx.Prefabs.Coin.GetComponent<GoldPickup>(), chest.GetComponent<SpriteRenderer>(), 60);
+                            }
+                            break;
                         case '$':
                             var coin = Spawn(ctx.Prefabs.Coin, feet + Vector3.up * 0.4f, entities);
                             coin.transform.localScale = new Vector3(1.3f, 1.3f, 1f);
@@ -1034,7 +1049,7 @@ namespace Abismo.EditorTools
                 foreach (var anchor in info.FlameAnchors)
                 {
                     Vector2 local = anchor / ArtBaker.PixelsPerUnit;
-                    if (!big) AddFlame(go, ctx, local, false, order + 2);
+                    if (!big && !HojaArt.LlamaPintada(name)) AddFlame(go, ctx, local, false, order + 2);
                     center += local;
                 }
                 center /= info.FlameAnchors.Count;
@@ -1068,27 +1083,28 @@ namespace Abismo.EditorTools
                     if (level.At(x, y - 1) == '#' && x - lastFloorX >= 3 && !NearOccupied(occupied, x, y, 2) && level.At(x, y + 1) != '#')
                     {
                         string prop = FloorProp(zone, h, level.IsBackWall(x, y));
-                        if (prop != null && prop.StartsWith("pila_"))
+                        if (prop != null && !ctx.Art.PropInfo.ContainsKey(prop)) prop = null; // arte de la hoja ausente
+                        if (prop != null)
                         {
-                            // Pilas de cadáveres atravesados por arpones (como en las catedrales de Blasphemous):
-                            // necesitan un tramo de suelo libre tan ancho como ellas.
-                            int half = Mathf.CeilToInt(ctx.Art.PropInfo[prop].Color.Width / ArtBaker.PixelsPerUnit * 0.5f);
-                            if (x - lastFloorX >= half + 2 && FloorClear(level, occupied, x, y, half))
+                            var size = ctx.Art.PropInfo[prop].Color;
+                            int half = Mathf.CeilToInt(size.Width / ArtBaker.PixelsPerUnit * 0.5f);
+                            int tall = Mathf.CeilToInt(size.Height / ArtBaker.PixelsPerUnit);
+                            // Los objetos anchos (pilas de cadáveres, tentáculos...) necesitan un tramo de suelo libre tan
+                            // ancho como ellos, y los altos (farolas, estatuas) que no haya techo encima.
+                            bool wide = half >= 2;
+                            if ((!wide || x - lastFloorX >= half + 2) && (!wide || FloorClear(level, occupied, x, y, half))
+                                && HeadRoom(level, x, y, wide ? half : 0, tall))
                             {
-                                PlaceProp(ctx, prop, new Vector3(x + 0.5f, y, 0f), parent, OrderCorpses);
-                                lastFloorX = x + half;
+                                PlaceProp(ctx, prop, new Vector3(x + 0.5f, y, 0f), parent, prop.StartsWith("pila_") ? OrderCorpses : OrderPropsBack);
+                                lastFloorX = wide ? x + half : x;
                             }
-                        }
-                        else if (prop != null)
-                        {
-                            PlaceProp(ctx, prop, new Vector3(x + 0.5f, y, 0f), parent, OrderPropsBack);
-                            lastFloorX = x;
                         }
                     }
                     // Techo: casilla libre con roca encima (cuelgan cosas).
                     if (level.At(x, y + 1) == '#' && x - lastCeilX >= CeilingSpacing(zone) && level.At(x, y - 1) != '#' && level.At(x, y - 2) != '#')
                     {
                         string prop = CeilingProp(zone, PixelCanvas.Hash(x, y, 777));
+                        if (prop != null && !ctx.Art.PropInfo.ContainsKey(prop)) prop = null;
                         if (prop != null)
                         {
                             PlaceProp(ctx, prop, new Vector3(x + 0.5f, y + 1f, 0f), parent, OrderPropsHanging);
@@ -1175,6 +1191,26 @@ namespace Abismo.EditorTools
             }
         }
 
+        /// <summary>Coloca una pieza de la hoja conceptual si su arte está disponible (si no, no pone nada).</summary>
+        static GameObject PlaceSheetProp(Context ctx, string name, Vector3 position, Transform parent, int order) =>
+            ctx.Art.PropInfo.ContainsKey(name) ? PlaceProp(ctx, name, position, parent, order) : null;
+
+        /// <summary>Estatua de la hoja para la letra E: alterna entre las cuatro según la columna.</summary>
+        static string SheetStatue(int x)
+        {
+            string[] statues = { "h_estatua_velada", "h_estatua_capucha", "h_estatua_pilar", "h_estatua_monje" };
+            return statues[(x * 7 + 3) % statues.Length];
+        }
+
+        /// <summary>No hay roca en las <paramref name="tall"/> casillas por encima de [x-half, x+half].</summary>
+        static bool HeadRoom(LevelData level, int x, int y, int half, int tall)
+        {
+            for (int dx = -half; dx <= half; dx++)
+                for (int dy = 0; dy < tall; dy++)
+                    if (level.At(x + dx, y + dy) == '#') return false;
+            return true;
+        }
+
         /// <summary>Suelo firme y despejado en [x-half, x+half] (para objetos anchos).</summary>
         static bool FloorClear(LevelData level, HashSet<Vector2Int> occupied, int x, int y, int half)
         {
@@ -1227,6 +1263,12 @@ namespace Abismo.EditorTools
                     if (h < 0.18f) return "coral_a";
                     if (h < 0.26f) return "pila_peces";
                     if (h < 0.3f) return "pila_ahogados_b";
+                    // Arte de la hoja conceptual.
+                    if (h < 0.33f) return "h_cruz_pequena";
+                    if (h < 0.36f) return "h_farolillo";
+                    if (h < 0.39f) return "h_capilla";
+                    if (h < 0.41f) return "h_cofre";
+                    if (h < 0.44f) return "h_estatua_peregrino";
                     return null;
                 case Zone.Ruins:
                     if (h < 0.08f) return "escombros_b";
@@ -1235,6 +1277,12 @@ namespace Abismo.EditorTools
                     if (h < 0.25f) return "velas_suelo";
                     if (h < 0.34f) return "pila_profundos";
                     if (h < 0.38f) return "pila_peces";
+                    if (h < 0.42f) return indoors ? "h_columna" : "h_columna_rota";
+                    if (h < 0.45f) return "h_estatua_verde";
+                    if (h < 0.48f) return "h_tentaculo";
+                    if (h < 0.51f) return "h_escombros";
+                    if (h < 0.54f) return "h_relicario_alto";
+                    if (h < 0.56f) return "h_altar_piedra";
                     return null;
                 case Zone.Sanctuary:
                     if (h < 0.18f) return "velas_suelo";
@@ -1242,6 +1290,16 @@ namespace Abismo.EditorTools
                     if (h < 0.28f) return "columna_rota";
                     if (h < 0.38f) return "pila_ahogados_a";
                     if (h < 0.46f) return "pila_ahogados_b";
+                    if (h < 0.5f) return "h_estatua_velada";
+                    if (h < 0.53f) return "h_estatua_capucha";
+                    if (h < 0.56f) return "h_relicario";
+                    if (h < 0.59f) return "h_farola";
+                    if (h < 0.62f) return "h_vela";
+                    if (h < 0.64f) return "h_estatua_pilar";
+                    if (h < 0.66f) return "h_idolo_dorado";
+                    if (h < 0.68f) return "h_cruz";
+                    if (h < 0.7f) return "h_hornacina_farol";
+                    if (h < 0.72f) return "h_estatua_monje";
                     return null;
                 default:
                     if (h < 0.12f) return "coral_a";
@@ -1249,6 +1307,9 @@ namespace Abismo.EditorTools
                     if (h < 0.26f) return "huesos";
                     if (h < 0.29f) return "escombros_b";
                     if (h < 0.35f) return "pila_peces";
+                    if (h < 0.39f) return "h_tentaculo";
+                    if (h < 0.42f) return "h_escombros";
+                    if (h < 0.44f) return "h_cruz_pequena";
                     return null;
             }
         }
@@ -1257,8 +1318,9 @@ namespace Abismo.EditorTools
         {
             switch (zone)
             {
-                case Zone.Ruins: return h < 0.35f ? "cadenas" : h < 0.55f ? "jaula" : null;
-                case Zone.Sanctuary: return h < 0.35f ? "estandarte" : h < 0.55f ? "cadenas" : h < 0.68f ? "jaula" : null;
+                case Zone.Ruins: return h < 0.35f ? "cadenas" : h < 0.55f ? "jaula" : h < 0.63f ? "h_cadenas" : h < 0.7f ? "h_farol_colgante" : null;
+                case Zone.Sanctuary: return h < 0.35f ? "estandarte" : h < 0.55f ? "cadenas" : h < 0.68f ? "jaula"
+                                          : h < 0.76f ? "h_farol_colgante" : h < 0.82f ? "h_lampara_ojo" : null;
                 default: return null;
             }
         }
@@ -1290,6 +1352,9 @@ namespace Abismo.EditorTools
                 var zone = level.ZoneAt(Mathf.Min(level.Width - 1, starts[z]));
                 var zoneRoot = new GameObject("Fondo " + zone).transform;
                 zoneRoot.SetParent(root, false);
+                // Cámara a mitad de la zona: ahí se centran los fondos pintados (cuadros, no patrones).
+                float zoneEnd = z + 1 < starts.Count ? starts[z + 1] : level.Width;
+                float zoneCamera = Mathf.Clamp((starts[z] + zoneEnd) * 0.5f, minCamera, maxCamera);
                 foreach (var (layer, sprite) in ctx.Art.Backgrounds[zone])
                 {
                     var go = new GameObject(layer.Name);
@@ -1303,6 +1368,12 @@ namespace Abismo.EditorTools
                     float tiledWidth = Mathf.Ceil(needed / width) * width;
                     sr.size = new Vector2(tiledWidth, height);
                     float x = cameraStart.x + (1f - layer.Parallax.x) * (dMin + dMax) * 0.5f - tiledWidth * 0.5f;
+                    if (layer.Centered)
+                    {
+                        // Con la cámara en zoneCamera, el centro de un cuadro del mosaico queda en el centro de la pantalla.
+                        float aligned = zoneCamera - width * 0.5f - (zoneCamera - cameraStart.x) * layer.Parallax.x;
+                        x = aligned + Mathf.Round((x - aligned) / width) * width;
+                    }
                     float y = viewBottom + layer.BottomOffset;
                     go.transform.position = new Vector3(x, y, 0f);
                     var parallax = go.AddComponent<ParallaxLayer>();

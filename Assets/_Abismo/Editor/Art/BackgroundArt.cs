@@ -21,6 +21,8 @@ namespace Abismo.EditorTools
         public bool Lit;
         /// <summary>Color con el que rellenar por debajo / por encima de la capa (alpha 0 = sin relleno).</summary>
         public Color32 FillBelow, FillAbove;
+        /// <summary>Cuadro pintado (no un patrón): el constructor lo centra en la mitad de su zona para que se vea entero.</summary>
+        public bool Centered;
     }
 
     /// <summary>
@@ -34,13 +36,49 @@ namespace Abismo.EditorTools
 
         public static List<BackgroundLayer> For(Zone zone)
         {
+            List<BackgroundLayer> layers;
             switch (zone)
             {
-                case Zone.Ruins: return Ruins();
-                case Zone.Sanctuary: return Sanctuary();
-                case Zone.Reef: return Reef();
-                default: return Coast();
+                case Zone.Ruins: layers = Ruins(); break;
+                case Zone.Sanctuary: layers = Sanctuary(); break;
+                case Zone.Reef: layers = Reef(); break;
+                default: layers = Coast(); break;
             }
+            // Si está el arte de la hoja conceptual, su fondo pintado sustituye al cielo y a las capas más lejanas;
+            // las capas cercanas (casas, árboles, rocas, niebla) siguen delante para dar profundidad.
+            var pintura = HojaArt.Fondo(zone);
+            if (pintura != null)
+            {
+                string[] sustituidas;
+                float subida;
+                switch (zone)
+                {
+                    case Zone.Ruins: sustituidas = new[] { "abismo", "monolitos" }; subida = 5f; break;
+                    case Zone.Sanctuary: sustituidas = new[] { "abside", "coloso" }; subida = 6f; break;
+                    case Zone.Reef: sustituidas = new[] { "cielo" }; subida = 6f; break;
+                    default: sustituidas = new[] { "cielo", "pueblo_lejano" }; subida = 0f; break;
+                }
+                layers.RemoveAll(l => System.Array.IndexOf(sustituidas, l.Name) >= 0);
+                const float p = 0.97f;
+                layers.Insert(0, new BackgroundLayer
+                {
+                    Name = "pintura", Canvas = pintura, Parallax = new Vector2(p, p), Order = -101, BottomOffset = subida * (1f - p),
+                    FillAbove = RowAverage(pintura, pintura.Height - 1), FillBelow = RowAverage(pintura, 0), Centered = true,
+                });
+            }
+            return layers;
+        }
+
+        /// <summary>Color medio (opaco) de una fila del lienzo.</summary>
+        static Color32 RowAverage(PixelCanvas c, int y)
+        {
+            long r = 0, g = 0, b = 0;
+            for (int x = 0; x < c.Width; x++)
+            {
+                var p = c.Pixels[y * c.Width + x];
+                r += p.r; g += p.g; b += p.b;
+            }
+            return new Color32((byte)(r / c.Width), (byte)(g / c.Width), (byte)(b / c.Width), 255);
         }
 
         // ------------------------------------------------------------------
