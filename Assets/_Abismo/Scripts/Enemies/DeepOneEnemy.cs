@@ -29,6 +29,25 @@ namespace Abismo
 
         protected override bool CanFlinch => ai != AI.Windup && ai != AI.Attack;
 
+        /// <summary>
+        /// Lo usa el constructor para crear variantes con la misma inteligencia (el Arrepentido con su lanza, el Horror
+        /// Costero que se abalanza): velocidades, alcance, tiempos y caja del golpe.
+        /// </summary>
+        public void ConfigureAttack(float patrol, float chase, float range, float windup, float active, float recover,
+                                    float lunge, int damage, Vector2 offset, Vector2 size)
+        {
+            patrolSpeed = patrol;
+            chaseSpeed = chase;
+            attackRange = range;
+            windupTime = windup;
+            attackTime = active;
+            recoverTime = recover;
+            lungeSpeed = lunge;
+            attackDamage = damage;
+            attackOffset = offset;
+            attackSize = size;
+        }
+
         void ChangeState(AI next)
         {
             ai = next;

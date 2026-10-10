@@ -3,7 +3,7 @@ using UnityEngine;
 namespace Abismo
 {
     /// <summary>
-    /// Jefe: El Arcipreste de las Mareas.
+    /// Jefe: El Arcipreste de las Mareas (y, con otro arte y otros valores, El Que Susurra en la Oscuridad).
     /// Ataques: tentáculos que brotan del suelo, abanico de esferas (¡párelas para devolverlas!)
     /// y una embestida imparable (brilla en ROJO: no se puede parar, hay que esquivarla).
     /// Al bajar de la mitad de vida entra en la segunda fase y se vuelve más rápido.
@@ -21,6 +21,8 @@ namespace Abismo
         [SerializeField] int chargeDamage = 25;
         [SerializeField] int tentacleDamage = 20;
         [SerializeField] Vector2 orbOrigin = new Vector2(2.2f, 3.8f); // la brasa del báculo al apuntar
+        [Tooltip("Lo que se lee al pasar a la segunda fase.")]
+        [SerializeField] string phaseMessage = "La marea se embravece...";
 
         Phase phase = Phase.Dormant;
         float timer, recoverTime = 0.8f, nextTentacleAt;
@@ -28,6 +30,13 @@ namespace Abismo
         bool chargeHit;
 
         public bool IsAwake => phase != Phase.Dormant;
+
+        /// <summary>El mismo combate sirve para otros jefes (El Que Susurra en la Oscuridad): de dónde salen las esferas y su mensaje.</summary>
+        public void ConfigureBoss(Vector2 castPoint, string secondPhaseMessage)
+        {
+            orbOrigin = castPoint;
+            phaseMessage = secondPhaseMessage;
+        }
         float Pace => stage == 2 ? 0.7f : 1f;
 
         /// <summary>Lo llama la arena cuando entras: empieza el combate.</summary>
@@ -225,7 +234,7 @@ namespace Abismo
                 GameFeel.Shake(0.7f);
                 CameraFX.Warp(-0.45f);
                 CameraFX.Chromatic(0.8f);
-                if (HUD.Instance != null) HUD.Instance.ShowMessage("La marea se embravece...");
+                if (HUD.Instance != null && !string.IsNullOrEmpty(phaseMessage)) HUD.Instance.ShowMessage(phaseMessage);
             }
         }
 
