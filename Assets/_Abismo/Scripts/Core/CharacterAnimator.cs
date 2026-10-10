@@ -11,7 +11,7 @@ namespace Abismo
     public class CharacterAnimator : MonoBehaviour
     {
         Animator animator;
-        int currentHash;
+        int currentHash, currentPlayHash;
         string currentName = "";
 
         public string Current => currentName;
@@ -36,7 +36,16 @@ namespace Abismo
             }
             currentName = animationName;
             currentHash = hash;
+            currentPlayHash = playHash;
             animator.Play(playHash, 0, 0f);
+        }
+
+        /// <summary>Deja la animación quieta en un punto (0 = principio, 1 = final). Hay que llamarlo cada fotograma.</summary>
+        public void Hold(string animationName, float normalizedTime)
+        {
+            Play(animationName);
+            if (animator == null || currentName != animationName) return;
+            animator.Play(currentPlayHash, 0, normalizedTime);
         }
 
         /// <summary>Progreso de la animación actual: 0 al empezar, 1 al terminar (sigue creciendo si es en bucle).</summary>

@@ -1238,8 +1238,8 @@ namespace Abismo.EditorTools
                     for (int d = -1; d <= 1; d += 2)
                     {
                         if (Solid(x + d, y) || !Solid(x + d, y + 1) || !reported.Add(new Vector2Int(x + d, y))) continue;
-                        Debug.LogWarning($"[Abismo] Paso demasiado bajo en la columna {x + d}, altura {y} del mapa (contando desde abajo): " +
-                                         "el jugador necesita 2 casillas de alto para pasar.");
+                        Debug.LogWarning($"[Abismo] Paso bajo en la columna {x + d}, altura {y} del mapa (contando desde abajo): " +
+                                         "de pie hacen falta 2 casillas; con 1 solo se pasa deslizándose (si el hueco es llano).");
                     }
                 }
         }

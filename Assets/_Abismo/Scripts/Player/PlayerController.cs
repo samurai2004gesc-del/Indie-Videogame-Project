@@ -43,6 +43,10 @@ namespace Abismo
         [SerializeField] float dashDuration = 0.32f;
         [SerializeField] float dashCooldown = 0.45f;
         [SerializeField] bool allowAirDash = false;
+        [Tooltip("Alto del cuerpo durante el deslizamiento: así se cuela por huecos de una casilla.")]
+        [SerializeField] float slideHeight = 0.8f;
+        [Tooltip("Velocidad al seguir arrastrándose bajo un techo bajo cuando el deslizamiento ya ha acabado.")]
+        [SerializeField] float crawlSpeed = 4f;
 
         /// <summary>Un golpe: su animación, daño, cuándo hace daño (sincronizado con los fotogramas) y dónde.</summary>
         [System.Serializable]
@@ -151,6 +155,12 @@ namespace Abismo
         Collider2D ignoredPlatform;
         float ignorePlatformUntil;
 
+        // Cuerpo de pie y agachado (deslizamiento)
+        Vector2 standSize, standOffset;
+        bool crouched;
+        ContactFilter2D headroomFilter;
+        readonly List<Collider2D> headroomBuffer = new List<Collider2D>(4);
+
         // Animación
         float landAnimUntil;
         bool hiddenByHazard;
@@ -175,6 +185,12 @@ namespace Abismo
             groundFilter.SetLayerMask(GameLayers.GroundMask);
             groundFilter.SetNormalAngle(45f, 135f);
             groundFilter.useTriggers = false;
+
+            standSize = body.size;
+            standOffset = body.offset;
+            headroomFilter = new ContactFilter2D();
+            headroomFilter.SetLayerMask(GameLayers.GroundMask);
+            headroomFilter.useTriggers = false;
 
             lastSafePosition = transform.position;
         }
@@ -216,7 +232,8 @@ namespace Abismo
             switch (state)
             {
                 case State.Normal: UpdateNormal(locked); break;
-                case State.Dashing: if (stateTimer >= dashDuration) SetState(State.Normal); break;
+                // Al acabar el deslizamiento solo se levanta si cabe de pie; si no, sigue arrastrándose (FixedUpdate).
+                case State.Dashing: if (stateTimer >= dashDuration && HasHeadroom()) SetState(State.Normal); break;
                 case State.Attacking: UpdateAttack(); break;
                 case State.Parrying: UpdateParry(); break;
                 case State.Executing: UpdateExecution(); break;
@@ -257,7 +274,16 @@ namespace Abismo
                     v.x = Mathf.MoveTowards(v.x, moveX * runSpeed, (grounded ? groundAcceleration : airAcceleration) * dt);
                     break;
                 case State.Dashing:
-                    v.x = facing * dashSpeed * Mathf.Lerp(1f, 0.6f, stateTimer / dashDuration);
+                    if (stateTimer < dashDuration)
+                    {
+                        v.x = facing * dashSpeed * Mathf.Lerp(1f, 0.6f, stateTimer / dashDuration);
+                    }
+                    else
+                    {
+                        // Bajo un techo bajo: se arrastra hasta salir; si topa con una pared, da la vuelta.
+                        if (stateTimer > dashDuration + 0.1f && Mathf.Abs(v.x) < 0.2f) facing = -facing;
+                        v.x = facing * crawlSpeed;
+                    }
                     if (!grounded && allowAirDash) v.y = 0f;
                     break;
                 case State.Attacking:
@@ -291,8 +317,44 @@ namespace Abismo
 
         void SetState(State newState)
         {
+            SetCrouched(newState == State.Dashing);
             state = newState;
             stateTimer = 0f;
+        }
+
+        /// <summary>Encoge el cuerpo (sin mover los pies) para deslizarse por huecos bajos, o lo devuelve a su alto.</summary>
+        void SetCrouched(bool value)
+        {
+            if (crouched == value || body == null) return;
+            crouched = value;
+            if (value)
+            {
+                // Una cápsula vertical no puede ser más baja que ancha.
+                float height = Mathf.Max(standSize.x, Mathf.Min(slideHeight, standSize.y));
+                body.size = new Vector2(standSize.x, height);
+                body.offset = new Vector2(standOffset.x, standOffset.y - (standSize.y - height) * 0.5f);
+            }
+            else
+            {
+                body.size = standSize;
+                body.offset = standOffset;
+            }
+        }
+
+        /// <summary>¿Cabe de pie aquí? (techo y paredes; las plataformas de un solo sentido no cuentan).</summary>
+        bool HasHeadroom()
+        {
+            if (!crouched) return true;
+            // Un poco más estrecha y separada del suelo que el cuerpo de pie, para no tocar el suelo ni las paredes.
+            Vector2 size = new Vector2(standSize.x - 0.1f, standSize.y - 0.1f);
+            Vector2 center = rb.position + standOffset + Vector2.up * 0.05f;
+            Physics2D.OverlapCapsule(center, size, CapsuleDirection2D.Vertical, 0f, headroomFilter, headroomBuffer);
+            for (int i = 0; i < headroomBuffer.Count; i++)
+            {
+                var other = headroomBuffer[i];
+                if (other != null && other != body && !other.usedByEffector) return false;
+            }
+            return true;
         }
 
         // ------------------------------------------------------------------
@@ -763,7 +825,12 @@ namespace Abismo
         void UpdateVisuals()
         {
             if (visual != null) visual.localScale = new Vector3(facing, 1f, 1f);
-            if (anim != null) anim.Play(AnimationForState());
+            if (anim != null)
+            {
+                // Arrastrándose bajo un techo bajo: se queda en la pose de deslizarse en vez de levantarse.
+                if (state == State.Dashing && stateTimer >= dashDuration) anim.Hold("dodge", 0.45f);
+                else anim.Play(AnimationForState());
+            }
 
             // Parpadeo mientras eres invulnerable tras un golpe.
             bool blinkOff = state != State.Dead && Time.time < invulnerableUntil && Mathf.Repeat(Time.time, 0.12f) < 0.06f;
