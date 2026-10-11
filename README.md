@@ -6,9 +6,10 @@ Está hecho con **Unity 6.6**, el **Universal Render Pipeline (URP) 2D** y **C#*
 
 ![Personajes](docs/img/personajes.png)
 
-*El Ahogado (jugador), un Profundo, el Guardián de la Concha, un Sectario de Dagón, un Ojo del Vacío y el jefe,
-el Arcipreste de las Mareas. Todo el arte —personajes animados fotograma a fotograma, escenarios, fondos,
-efectos e interfaz— se pinta por código.*
+*El Ahogado (jugador) y sus enemigos: Profundo, Guardián de la Concha, Cultista del Abismo, Ojo del Vacío,
+Arrepentido, Horror Costero, Rasgo de los Profundos y los dos jefes, el Arcipreste de las Mareas y El Que Susurra
+en la Oscuridad. Los personajes, animados fotograma a fotograma, se pintan por código; los fondos pintados y parte
+del decorado vienen de la hoja conceptual del proyecto (ver [Arte de la hoja conceptual](#arte-de-la-hoja-conceptual)).*
 
 ![Costa de Innsmouth](docs/img/costa_innsmouth.png)
 
@@ -19,6 +20,8 @@ efectos e interfaz— se pinta por código.*
 ![El Arcipreste de las Mareas](docs/img/arcipreste.png)
 
 ![Arrecife del Diablo](docs/img/arrecife.png)
+
+![El Que Susurra en la Oscuridad](docs/img/susurrante.png)
 
 *Vistas previas compuestas fuera de Unity con el mismo arte del juego y una aproximación de su iluminación
 (luces 2D, bloom, viñeta). En Unity además hay paralaje, niebla en movimiento, llamas animadas y partículas.*
@@ -41,16 +44,17 @@ frente. Abajo: la ejecución de un enemigo aturdido.*
 | Blasphemous | Abismo | Estado |
 |---|---|---|
 | El Penitente | **El Ahogado**, un pescador de Innsmouth con una escafandra de latón | ✅ |
-| Combo, esquiva, parada | Combo de 3 golpes, ataque aéreo, deslizamiento invulnerable y **parada** que aturde al enemigo | ✅ |
+| Combo, esquiva, parada | Combo de 3 golpes, ataque aéreo, **deslizamiento** invulnerable que se cuela por huecos bajos y **parada** que aturde al enemigo | ✅ |
 | Frascos Biliares | **Láudano**: frascos que curan y se rellenan en los altares | ✅ |
 | Fervor y oraciones | **Revelación**: se gana golpeando y se gasta en el conjuro **Signo Arcano** | ✅ |
 | Reclinatorios | **Altares del Signo Antiguo**: curan y guardan el punto de reaparición, pero las criaturas reviven | ✅ |
 | Culpa | **Fragmento de mente**: al morir queda donde caíste y, hasta que lo recuperes, tu Revelación se reduce | ✅ |
 | Lágrimas de Expiación | **Oro de Innsmouth** | ✅ |
-| Enemigos | Profundo (cuerpo a cuerpo), Sectario (a distancia), Ojo del Vacío (volador) y **Guardián de la Concha**, con un escudo que para los golpes de frente | ✅ |
+| Enemigos | Profundo (cuerpo a cuerpo), Cultista del Abismo (a distancia), Ojo del Vacío (volador), **Guardián de la Concha** (escudo que para los golpes de frente), **Arrepentido** (lancero de largo alcance), **Horror Costero** (rápido, se abalanza sobre ti) y **Rasgo de los Profundos** (mole con un golpe rojo imparable cada tres ataques) | ✅ |
 | Ejecuciones | Ataca a un enemigo **aturdido** para rematarlo con una animación brutal (más Revelación y más oro) | ✅ |
 | Golpes que se sienten | **Chispazos**, **sangre**, estrella blanca al recibir daño, chispas al chocar con un escudo, congelación del golpe (*hit-stop*) y temblor | ✅ |
-| Jefes | **El Arcipreste de las Mareas**: tentáculos, abanico de esferas, embestida imparable y 2 fases | ✅ |
+| Jefes | **El Arcipreste de las Mareas** (Santuario) y **El Que Susurra en la Oscuridad** (final del Arrecife): tentáculos, abanico de esferas, embestida imparable y 2 fases | ✅ |
+| Secretos | **Cofres** escondidos con oro de Innsmouth | ✅ |
 | Ataques rojos imparables | Brillo **naranja** = se puede parar · Brillo **rojo** = hay que esquivar | ✅ |
 | Animación a mano | **Animación fotograma a fotograma** con anticipación, estelas (*smears*) y continuación, en Animator | ✅ |
 | Pixel art iluminado | **Luces 2D** de URP: velas, faroles y altares iluminan la piedra gracias a sus **normal maps** | ✅ |
@@ -60,7 +64,7 @@ frente. Abajo: la ejecución de un enemigo aturdido.*
 | Sonido | Efectos y ambiente sintetizados por código (no hacen falta archivos de audio) | ✅ |
 
 Un nivel completo con 4 zonas y su propio ambiente: **Costa de Innsmouth → Ruinas Ciclópeas →
-Santuario de las Mareas (jefe) → Arrecife del Diablo**.
+Santuario de las Mareas (jefe) → Arrecife del Diablo (jefe final)**.
 
 ![Nivel completo](docs/img/nivel_completo.png)
 
@@ -110,6 +114,9 @@ Unity 6.5 declaró obsoleto el render pipeline integrado (Built-in), así que el
   biselados). Un pequeño motor (`Editor/Art/ShadedCanvas.cs`) las ilumina por **bandas** con paletas
   de matiz desplazado (sombras frías azul-violeta, luces cálidas), pone **contornos selectivos**,
   **sombras de contacto** y **contraluz** (*rim light*), y además calcula el **normal map** de cada fotograma.
+- **Detalle dibujado, no ruido.** Cada material lleva su propio relieve y textura pegados a la pieza (escamas,
+  tejido, vetas de madera, óxido, nácar, damasco), con pliegues, costuras, remaches y brillos especulares de un
+  píxel; la roca tiene bordes rotos, sillares biselados, estratos y fósiles, y los muros, arquivoltas y tracería.
 - **Animación con principios clásicos.** Poses clave con curvas de aceleración: el Ahogado anticipa el
   golpe, deja una **estela** curva en el fotograma de impacto y continúa el movimiento; la capa y la
   manguera se mueven con retraso. Los enemigos telegrafían sus ataques con varios fotogramas de aviso.
@@ -121,9 +128,11 @@ Unity 6.5 declaró obsoleto el render pipeline integrado (Built-in), así que el
   **derrumbados** en las Ruinas y arcos abiertos en el Santuario. Encima, el decorado: **vidrieras** que
   brillan con motivos lovecraftianos (un ojo, Dagón, el Signo Antiguo), **pilas de cadáveres** atravesados por
   arpones como en las catedrales de Blasphemous, estatuas, candelabros, estandartes, jaulas y cadenas.
-- **Fondos luminosos y brumosos**, con perspectiva atmosférica por capas (`BackgroundArt.cs`): árboles
-  muertos y el Durmiente en la niebla tras Innsmouth, monolitos de R'lyeh en bruma verde, una nave dorada con
-  un **coloso ahogado encadenado** y un ocaso violeta sobre el Arrecife. Lo oscuro queda para el primer plano.
+- **Fondos luminosos y brumosos**, con perspectiva atmosférica por capas (`BackgroundArt.cs`). Al fondo, el
+  **panel pintado de la hoja conceptual** de cada zona: el castillo bajo la luna tras Innsmouth, el remolino con
+  un tentáculo sobre las Ruinas, la catedral con su estatua y su vidriera en el Santuario y el cielo rojo con la
+  criatura sobre el Arrecife. Delante, con paralaje, árboles muertos, bruma verde, escalinatas, pilares, rayos de
+  luz, polvo y escollos. Lo oscuro queda para el primer plano.
 - **Golpes con peso.** Cada impacto congela el juego unas centésimas, hace temblar la cámara y dispara
   efectos pintados a mano en código (`EffectArt.cs`): el chispazo amarillo-naranja con su media luna, la
   sangre en racimos, la estrella de daño, el estallido del Signo Arcano...
@@ -140,6 +149,24 @@ Unity 6.5 declaró obsoleto el render pipeline integrado (Built-in), así que el
 
 *Los efectos de combate, fotograma a fotograma.*
 
+### Arte de la hoja conceptual
+
+La hoja conceptual del proyecto (`ArteHoja/hoja_original.webp`) se aprovecha de dos maneras:
+
+- **Recortada tal cual.** `Tools/ExtraerHoja/extraer_hoja.py` recorta sus cuatro paneles de escenario como
+  **fondos pintados** (el castillo y la luna en la Costa, el remolino-tentáculo en las Ruinas, la catedral en el
+  Santuario y el cielo rojo con la criatura en el Arrecife) y 40 piezas de **decorado**: columnas, pórticos,
+  farolas, estatuas veladas, relicarios, cofres, puertas, niebla... Las guarda en `ArteHoja/` con fondo
+  transparente y paleta reducida. Al construir, `Editor/Art/HojaArt.cs` les calcula un normal map y la capa
+  de brillo (las llamas y el ojo rojo brillan y llevan su propia luz 2D).
+- **Redibujada y animada.** Los personajes de la hoja tienen una sola pose, así que se redibujaron con el motor
+  de pixel art por código y se animaron fotograma a fotograma: el **Cultista del Abismo**, el **Arrepentido**,
+  el **Horror Costero**, el **Rasgo de los Profundos** y el jefe **El Que Susurra en la Oscuridad**.
+
+Para volver a recortar (por ejemplo, tras cambiar una caja en el script):
+`python3 Tools/ExtraerHoja/extraer_hoja.py ArteHoja/hoja_original.webp ArteHoja` (necesita Pillow, NumPy y
+SciPy). Si borras la carpeta `ArteHoja`, el juego vuelve a usar solo los fondos y el decorado pintados por código.
+
 ---
 
 ## Cómo está organizado
@@ -149,7 +176,8 @@ Assets/_Abismo/
 ├── Scripts/
 │   ├── Core/       GameManager, cámara, entrada, combate, efectos (post-procesado reactivo), sonido, animador
 │   ├── Player/     PlayerController (movimiento, combate y animaciones), PlayerStats
-│   ├── Enemies/    Enemy (base común), Profundo, Guardián de la Concha, Sectario, Ojo del Vacío, Arcipreste, proyectiles...
+│   ├── Enemies/    Enemy (base común), Profundo (también Arrepentido y Horror Costero), Guardián de la Concha,
+│   │               Sectario, Ojo del Vacío, Rasgo, jefes (Arcipreste y El Que Susurra), proyectiles...
 │   ├── World/      Altares, inscripciones, peligros, oro, paralaje, ambientación por zonas, llamas, brillos
 │   └── UI/         HUD (toda la interfaz se crea por código a 640×360)
 ├── Shaders/        SpriteSilhouette (destellos), SpriteEmissive (partes que brillan), SpriteAdditive (luz)
@@ -159,6 +187,8 @@ Assets/_Abismo/
 │   ├── Build/      Configuración de URP 2D e importación del arte (hojas de sprites, normal maps, animaciones)
 │   └── AbismoBuilder.cs   El menú "Abismo": monta prefabs y la escena
 └── Levels/         nivel_01.txt  ← el mapa del nivel, ¡en texto!
+ArteHoja/           Fondos pintados y decorado recortados de la hoja conceptual (los lee Editor/Art/HojaArt.cs)
+Tools/ExtraerHoja/  El script de Python que los recorta de la hoja
 ```
 
 Al pulsar **Construir** aparecen además `Art/Generated/` (PNG), `Animations/`, `Materials/`, `Prefabs/`,
@@ -175,8 +205,8 @@ Construir respeta tus prefabs; `Abismo → Restablecer prefabs y construir` los 
 
 **Diseñar niveles.** Abre `Assets/_Abismo/Levels/nivel_01.txt` con cualquier editor de texto. Cada
 carácter es una casilla de 32×32 píxeles (`#` roca, `=` plataforma, `^` coral espinoso, `D` Profundo,
-`G` Guardián de la Concha, `A` altar, `S` estatua, `L` candelabro...; la leyenda completa está al principio
-del fichero). La línea
+`G` Guardián de la Concha, `R` Arrepentido, `H` Horror Costero, `N` Rasgo, `B`/`U` jefes, `A` altar, `X` cofre,
+`S` estatua, `L` candelabro...; la leyenda completa está al principio del fichero). La línea
 `zonas:` del final dice en qué columna empieza cada zona. Guarda y usa **Abismo → Construir demo jugable**:
 el terreno se vuelve a pintar a partir del mapa y el decorado pequeño se coloca solo.
 

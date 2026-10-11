@@ -77,9 +77,13 @@ al dios... o si lo sella para siempre.
 |---|---|---|
 | **Profundo** | Patrulla, persigue y lanza un zarpazo con estocada | Para el zarpazo y castiga |
 | **Guardián de la Concha** | Avanza tras un escudo de vieira gigante que para todo golpe frontal; se gira despacio; lanzada con arpón por encima del escudo | Rodéalo y golpéale la espalda, rómpele la guardia con 4 golpes seguidos o para la lanzada; luego, ejecútalo |
-| **Sectario** | Mantiene la distancia y lanza esferas de energía | Devuelve las esferas o acércate deslizándote |
+| **Cultista del Abismo** (Sectario) | Encapuchado de la hoja conceptual: mantiene la distancia y lanza esferas de energía | Devuelve las esferas o acércate deslizándote |
 | **Ojo del Vacío** | Vuela, atraviesa paredes y se lanza en picado | Para el picado o golpéalo al subir |
+| **Arrepentido** | Penitente esquelético con una lanza larga: estocada de gran alcance | Para la estocada o métete bajo su alcance |
+| **Horror Costero** | Pulpo que corre sobre sus tentáculos y se abalanza sobre ti | Pocos puntos de vida: para la acometida y remata |
+| **Rasgo de los Profundos** | Mole con cabeza de calamar; barrido de tentáculos (naranja, parable) y cada tres ataques un golpe aplastante (rojo, imparable) | Para los barridos; ante el rojo, deslízate lejos |
 | **Arcipreste de las Mareas** (jefe) | Tentáculos del suelo, abanico de esferas, embestida roja; 2.ª fase más rápida | Lee el suelo, devuelve esferas, esquiva la embestida |
+| **El Que Susurra en la Oscuridad** (jefe final) | El sacerdote-dios de la hoja conceptual, más grande y resistente: mismo repertorio que el Arcipreste y un grito al cambiar de fase | Igual que el Arcipreste, con menos margen |
 
 **Ideas para más adelante:**
 - *Shoggoth menor:* masa que se divide en dos al recibir golpes fuertes.
@@ -87,6 +91,7 @@ al dios... o si lo sella para siempre.
 - *Sacerdotisa de Hydra:* invoca charcos que ralentizan.
 - *Mi-Go:* insecto que roba Revelación con su aguijón.
 - *Jefes:* La Madre Hydra, El Coloso de Basalto, El Que No Debe Ser Nombrado.
+- *El Que Susurra* con repertorio propio (ahora comparte el del Arcipreste).
 
 ## 6. Progresión (por implementar)
 
@@ -105,7 +110,7 @@ al dios... o si lo sella para siempre.
 | Costa de Innsmouth | Playa de piedra, niebla, la luna enferma | Demo |
 | Ruinas Ciclópeas | Interiores de piedra con ángulos imposibles | Demo |
 | Santuario de las Mareas | Templo del Arcipreste | Demo (jefe) |
-| Arrecife del Diablo | Rocas negras en mar abierto | Demo (final) |
+| Arrecife del Diablo | Rocas negras en mar abierto bajo un cielo rojo | Demo (jefe final) |
 | Archivos de Miskatonic | Biblioteca hundida, libros que susurran | Idea |
 | Jardines de la Madre Hydra | Corales que respiran | Idea |
 | R'lyeh | La ciudad del dios dormido | Idea (final) |
@@ -115,8 +120,9 @@ al dios... o si lo sella para siempre.
 Referencia principal: **Blasphemous** (The Game Kitchen). Lo que tomamos de su lenguaje visual:
 
 - **Pixel art detallado a baja resolución:** 640×360 píxeles de arte, 32 píxeles por casilla.
-  El jugador mide unos 60 píxeles; los jefes, casi tres veces más (el Arcipreste, ~165 px con la mitra).
-- **Siluetas legibles y un acento de color por personaje:** latón del Ahogado, brasa del Sectario,
+  El jugador mide unos 60 píxeles; los jefes, casi tres veces más (el Arcipreste, ~165 px con la mitra;
+  El Que Susurra, ~180 px con la capucha).
+- **Siluetas legibles y un acento de color por personaje:** latón del Ahogado, brasa del Cultista,
   iris rojo del Ojo, oro y verde del Signo en el Arcipreste. Negros nunca puros (sombras frías).
 - **Volumen pintado:** iluminación por bandas con paletas de matiz desplazado, contraluz, contornos
   selectivos y sombras de contacto; cada sprite tiene además su *normal map* para las luces 2D.
@@ -131,11 +137,17 @@ Referencia principal: **Blasphemous** (The Game Kitchen). Lo que tomamos de su l
 - **Paleta por zona:** costa gris azulada con niebla y árboles muertos; ruinas en bruma verde luminosa;
   santuario dorado y polvoriento con vidrieras rojas y turquesa; arrecife con ocaso naranja y púrpura.
 - **Fondos luminosos:** 5–6 capas por zona de valores medios, con perspectiva atmosférica fuerte y paralaje
-  (como los bosques brumosos de Blasphemous); lo oscuro queda para el primer plano. Siluetas colosales:
-  el Durmiente tras Innsmouth, el **Coloso Ahogado encadenado** en la nave del Santuario y R'lyeh emergiendo.
+  (como los bosques brumosos de Blasphemous); lo oscuro queda para el primer plano. La capa del fondo es el
+  panel pintado de la hoja conceptual de cada zona (el castillo y la luna, el remolino-tentáculo, la catedral y
+  el cielo rojo con la criatura que anuncia al jefe final).
   Los muros de las Ruinas están derrumbados y el Santuario alterna arcos abiertos y vidrieras para que se vean.
 - **Efectos de combate:** chispazos, sangre, estrellas, chispas de escudo, polvo y el Signo Arcano, pintados
   fotograma a fotograma y sin iluminar para que el bloom los haga brillar.
+- **Hoja conceptual:** sus paneles de escenario son los fondos pintados de cada zona y 40 piezas suyas
+  (columnas, farolas, estatuas veladas, relicarios, cofres, puertas, niebla) se recortan y se colocan como
+  decorado; sus personajes se redibujan y animan con el motor por código.
+- **Detalle por todas partes (v4):** sillares biselados con desconchones, estratos y fósiles en la roca,
+  arquivoltas y tracería en los muros, telas con damasco y bordados, escamas, ventosas, piel húmeda con brillos.
 - **Interfaz:** marcos góticos de metal y oro, medallón con el retrato, tipografía gótica pixelada
   para los títulos (Jacquard 24) y una pixel sans legible para los textos (Jersey 10).
 - **Sonido:** zumbidos graves, mar lejano, coros disonantes en los altares y en los jefes.
@@ -153,6 +165,6 @@ Referencia principal: **Blasphemous** (The Game Kitchen). Lo que tomamos de su l
 1. **Prototipo jugable** ✅ (este repositorio).
 2. **Vertical slice:** arte y animaciones fotograma a fotograma, iluminación URP 2D y atmósfera ✅;
    pendiente: música y guardado.
-3. **Primer bioma completo:** 3 zonas interconectadas, 6 enemigos, 2 jefes, amuletos y tienda.
+3. **Primer bioma completo:** 3 zonas interconectadas, 6 enemigos (hecho: 8), 2 jefes (hecho), amuletos y tienda.
 4. **Contenido:** resto de biomas, artefactos de exploración, finales.
 5. **Pulido y publicación** (itch.io / Steam).
