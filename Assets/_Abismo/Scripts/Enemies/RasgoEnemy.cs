@@ -18,13 +18,13 @@ namespace Abismo
         [SerializeField] float sweepWindup = 0.65f;
         [SerializeField] float sweepTime = 0.25f;
         [SerializeField] int sweepDamage = 22;
-        [SerializeField] Vector2 sweepOffset = new Vector2(1.5f, 1.3f);
-        [SerializeField] Vector2 sweepSize = new Vector2(2.8f, 1.8f);
+        [SerializeField] Vector2 sweepOffset = new Vector2(1.5f, 1.4f);   // el barrido dibujado: de 8 a 89 px, de 25 a 71 px de alto
+        [SerializeField] Vector2 sweepSize = new Vector2(2.7f, 1.6f);
         [SerializeField] float slamWindup = 0.95f;
         [SerializeField] float slamTime = 0.2f;
         [SerializeField] int slamDamage = 32;
-        [SerializeField] Vector2 slamOffset = new Vector2(1.8f, 0.6f);
-        [SerializeField] Vector2 slamSize = new Vector2(3f, 1.4f);
+        [SerializeField] Vector2 slamOffset = new Vector2(1.85f, 0.5f);  // los brazos contra el suelo, de 40 a 88 px con el polvo
+        [SerializeField] Vector2 slamSize = new Vector2(2.2f, 1.1f);
         [SerializeField] float recoverTime = 1f;
 
         AI ai = AI.Patrol;
