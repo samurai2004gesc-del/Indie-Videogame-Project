@@ -27,7 +27,7 @@ namespace Abismo.EditorTools
         const string FontFolder = Root + "/Fonts";
         const string LevelFile = Root + "/Levels/nivel_01.txt";
         const string ScenePath = SceneFolder + "/Nivel_01.unity";
-        const string PrefabLabel = "AbismoV3";
+        const string PrefabLabel = "AbismoV4";
 
         // Resolución de referencia: 640×360 píxeles de arte a 32 px por unidad (20 × 11,25 casillas).
         const int RefWidth = 640, RefHeight = 360;
@@ -243,7 +243,11 @@ namespace Abismo.EditorTools
             var baker = new ArtBaker(Progress);
 
             // Personajes.
-            var characters = new CharacterArt[] { new AhogadoArt(), new ProfundoArt(), new GuardianArt(), new SectarioArt(), new OjoArt(), new ArcipresteArt() };
+            var characters = new CharacterArt[]
+            {
+                new AhogadoArt(), new ProfundoArt(), new GuardianArt(), new SectarioArt(), new OjoArt(), new ArcipresteArt(),
+                new ArrepentidoArt(), new HorrorCosteroArt(), new RasgoArt(), new SusurranteArt(),
+            };
             var pending = new List<ArtBaker.PendingCharacter>();
             for (int i = 0; i < characters.Length; i++)
             {
@@ -489,6 +493,7 @@ namespace Abismo.EditorTools
         sealed class Prefabs
         {
             public GameObject Player, DeepOne, Guardian, Cultist, Eye, Boss;
+            public GameObject Penitent, Horror, Rasgo, Whisperer;
             public GameObject Orb, Spell, Coin, Fragment, Tentacle, Altar, Inscription;
         }
 
@@ -511,6 +516,33 @@ namespace Abismo.EditorTools
                 e => { e.ConfigureStats("Profundo", 45, 20, 0f, true); e.ConfigureDeath(0.95f); }, null));
             p.Guardian = GetOrBuild("GuardianDeLaConcha", overwrite, () => BuildEnemy<GuardianEnemy>(ctx, "GuardianDeLaConcha", "guardian", new Vector2(1.1f, 1.95f), false, gold,
                 e => { e.ConfigureStats("Guardián de la Concha", 75, 45, 0.7f, true); e.ConfigureDeath(1.1f); }, null));
+            // Enemigos de la hoja conceptual.
+            p.Penitent = GetOrBuild("Arrepentido", overwrite, () => BuildEnemy<DeepOneEnemy>(ctx, "Arrepentido", "arrepentido", new Vector2(0.8f, 1.8f), false, gold,
+                e =>
+                {
+                    e.ConfigureStats("Arrepentido", 40, 25, 0.2f, true);
+                    e.ConfigureDeath(0.95f);
+                    e.ConfigureAttack(1f, 2.6f, 2.8f, 0.7f, 0.2f, 0.8f, 3f, 18, new Vector2(2f, 1.05f), new Vector2(2.8f, 0.6f));
+                }, null));
+            p.Horror = GetOrBuild("HorrorCostero", overwrite, () => BuildEnemy<DeepOneEnemy>(ctx, "HorrorCostero", "horror", new Vector2(1f, 1.2f), false, gold,
+                e =>
+                {
+                    e.ConfigureStats("Horror Costero", 32, 20, 0f, true);
+                    e.ConfigureDeath(0.9f);
+                    e.ConfigureAttack(1.6f, 3.8f, 2.2f, 0.45f, 0.25f, 0.7f, 8f, 14, new Vector2(1.1f, 0.6f), new Vector2(1.8f, 1.1f));
+                }, null));
+            p.Rasgo = GetOrBuild("RasgoDeLosProfundos", overwrite, () => BuildEnemy<RasgoEnemy>(ctx, "RasgoDeLosProfundos", "rasgo", new Vector2(1.3f, 2.5f), false, gold,
+                e => { e.ConfigureStats("Rasgo de los Profundos", 130, 70, 0.85f, true); e.ConfigureDeath(1.3f); }, null));
+            p.Whisperer = GetOrBuild("ElQueSusurra", overwrite, () => BuildEnemy<BossArchpriest>(ctx, "ElQueSusurra", "susurrante", new Vector2(2.2f, 4.2f), false, gold,
+                e =>
+                {
+                    e.ConfigureStats("El Que Susurra en la Oscuridad", 520, 400, 1f, false);
+                    e.ConfigureDeath(2.4f);
+                    e.ConfigureBoss(SusurranteArt.CastPoint, "El susurro se vuelve un grito...");
+                    e.tentaclePrefab = p.Tentacle.GetComponent<TentacleStrike>();
+                    e.orbPrefab = p.Orb.GetComponent<Projectile>();
+                },
+                v => AddLight(v, new Vector2(1f, 4.9f), new Color(1f, 0.25f, 0.3f), 1.1f, 5f, 0.6f, true, 0.15f)));
             p.Cultist = GetOrBuild("Sectario", overwrite, () => BuildEnemy<CultistEnemy>(ctx, "Sectario", "sectario", new Vector2(0.8f, 1.85f), false, gold,
                 e => { e.ConfigureStats("Sectario", 30, 25, 0f, true); e.ConfigureDeath(1.05f); e.projectilePrefab = p.Orb.GetComponent<Projectile>(); },
                 v => AddLight(v, new Vector2(0.55f, 2.6f), new Color(1f, 0.55f, 0.25f), 0.9f, 2.4f, 0.7f, true, 0.3f)));
@@ -522,6 +554,8 @@ namespace Abismo.EditorTools
                 {
                     e.ConfigureStats("El Arcipreste de las Mareas", 420, 300, 1f, false);
                     e.ConfigureDeath(2.2f);
+                    // Los orbes salen de la gema del báculo en el fotograma de disparo.
+                    e.ConfigureBoss(new Vector2(3.7f, 4.3f), "La marea se embravece...");
                     e.tentaclePrefab = p.Tentacle.GetComponent<TentacleStrike>();
                     e.orbPrefab = p.Orb.GetComponent<Projectile>();
                 },
@@ -691,7 +725,7 @@ namespace Abismo.EditorTools
             var props = new GameObject("Decorado").transform;
 
             PlayerController player = null;
-            BossArchpriest boss = null;
+            var bosses = new List<BossArchpriest>();
             var occupied = new HashSet<Vector2Int>();
 
             for (int y = 0; y < level.Height; y++)
@@ -713,7 +747,11 @@ namespace Abismo.EditorTools
                         case 'G': Spawn(ctx.Prefabs.Guardian, feet, entities); break;
                         case 'C': Spawn(ctx.Prefabs.Cultist, feet, entities); break;
                         case 'V': Spawn(ctx.Prefabs.Eye, feet + Vector3.up * 0.5f, entities); break;
-                        case 'B': boss = Spawn(ctx.Prefabs.Boss, feet, entities).GetComponent<BossArchpriest>(); break;
+                        case 'B': bosses.Add(Spawn(ctx.Prefabs.Boss, feet, entities).GetComponent<BossArchpriest>()); break;
+                        case 'U': bosses.Add(Spawn(ctx.Prefabs.Whisperer, feet, entities).GetComponent<BossArchpriest>()); break;
+                        case 'R': Spawn(ctx.Prefabs.Penitent, feet, entities); break;
+                        case 'H': Spawn(ctx.Prefabs.Horror, feet, entities); break;
+                        case 'N': Spawn(ctx.Prefabs.Rasgo, feet, entities); break;
                         case 'S': PlaceProp(ctx, "estatua_madre", feet, props, OrderPropsBack - 1); break;
                         case 'I': PlaceProp(ctx, "idolo", feet, props, OrderPropsBack); break;
                         case 'L': PlaceProp(ctx, "candelabro", feet, props, OrderPropsBack); break;
@@ -761,7 +799,7 @@ namespace Abismo.EditorTools
             BuildPlatforms(ctx, platforms.transform);
             CreateHazards(ctx, hazards);
             var gates = CreateGates(ctx);
-            if (boss != null) CreateBossArena(boss, gates);
+            foreach (var boss in bosses) CreateBossArena(boss, GatesAround(boss, gates));
             Decorate(ctx, props, occupied);
             WarnLowPassages(level);
 
@@ -987,9 +1025,26 @@ namespace Abismo.EditorTools
             return gates;
         }
 
+        /// <summary>Las rejas de un jefe: la columna de rejas más cercana a cada lado.</summary>
+        static List<GameObject> GatesAround(BossArchpriest boss, List<GameObject> gates)
+        {
+            float bx = boss.transform.position.x;
+            GameObject left = null, right = null;
+            foreach (var gate in gates)
+            {
+                float gx = gate.transform.position.x;
+                if (gx < bx && (left == null || gx > left.transform.position.x)) left = gate;
+                if (gx > bx && (right == null || gx < right.transform.position.x)) right = gate;
+            }
+            var result = new List<GameObject>();
+            if (left != null) result.Add(left);
+            if (right != null) result.Add(right);
+            return result;
+        }
+
         static void CreateBossArena(BossArchpriest boss, List<GameObject> gates)
         {
-            var arena = new GameObject("ArenaDelJefe");
+            var arena = new GameObject("ArenaDelJefe " + boss.DisplayName);
             var box = arena.AddComponent<BoxCollider2D>();
             box.isTrigger = true;
 
